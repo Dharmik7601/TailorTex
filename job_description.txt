@@ -1,0 +1,37 @@
+About The Role
+
+We are seeking a Rust Software Engineer to help build the next generation of high-performance tools for chip fabrication and design. These tools blend real-time collaboration, computational geometry, GPU-accelerated visualization, simulation, interactive editing, and data processing.
+
+This is a broad, multi-domain, hands-on role. You’ll work across everything from low-level systems and data synchronization, to high-performance rendering, rich UI/UX editing tools, and distributed infrastructure. The software you build will help engineers design and understand real, physical systems.
+
+We’re open to a range of experience levels — from exceptional early-career engineers to senior and staff-level builders. There isn’t a single background we’re optimizing for. What matters most is that you’ve already built real things, you love getting close to the metal, and show strong signs of engineering excellence. If you’re excited by performance engineering, building complex features from scratch, and learning new domains quickly, this is a great place for you.
+
+A portfolio or GitHub is generally required to apply: show us the things you’ve built! For us, a good portfolio includes evidence of strong engineering skills and curiosity.
+
+Responsibilities
+
+Build deeply interactive editing tools with low-latency, CAD- or Figma-like interfaces for geometry manipulation, routing, annotation, and measurement
+Develop production-grade Rust software targeting both native and WebAssembly environments
+Architect real-time collaborative systems, including state synchronization, conflict resolution, and efficient data transmission
+Implement efficient algorithms for geometry querying, graphs, and routing
+Build high-performance rendering and visualization pipelines, from GPU-accelerated rendering and spatial indexing to streaming massive datasets, visualizing millions of polygons, or rendering complex 3D fields
+Continuously profile and optimize CPU, GPU, memory, and network performance to push the limits of responsiveness and scale
+Own major features end-to-end and work closely with internal users, including process engineers and circuit designers, to deliver powerful, intuitive tools that solve real problems
+
+Required Experience
+
+BS in Computer Science, Computer Engineering, or demonstrated exceptional skill in software engineering
+Strong programming skills in Rust, or significant C++/systems programming experience and a strong desire to learn Rust quickly
+Solid understanding of systems fundamentals: memory, performance, concurrency
+Experience building non-trivial software projects from scratch (personal, academic, or professional)
+Interest in one or more of the following areas: real-time systems, computational geometry, algorithms, computer graphics, visualization
+
+Nice-to-have
+
+Experience with interactive software such as Figma, Blender, Unity, OnShape or other CAD tool, Ableton Live, KiCad, or scientific computing environments
+Familiarity with WebAssembly or building rich applications
+Experience with schema evolution, database migrations, or serialization formats like Protobuf
+Understanding of collaborative or distributed systems (e.g., CRDTs, OT, WebSockets)
+Exposure to geometry or graph algorithms, optimization, or simulation (including spatial data structures and hierarchical representations)
+Experience with graphics rendering pipelines (WebGPU, Vulkan, OpenGL)
+Exposure to advanced 2D/3D visualization, simulation, or novel user interfaces

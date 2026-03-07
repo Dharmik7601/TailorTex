@@ -1,0 +1,14 @@
+# Ignore the output directory to prevent pushing automatically generated PDFs and compilation garbage
+output/
+
+# Ignore python environment files
+__pycache__/
+*.pyc
+.env
+
+# Ignore temporary compile outputs if generated in root directory
+*.aux
+*.log
+*.out
+*.pdf
+temp_resume*.tex
