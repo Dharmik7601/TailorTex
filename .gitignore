@@ -1,5 +1,6 @@
-# Ignore the output directory to prevent pushing automatically generated PDFs and compilation garbage
-output/
+# Ignore the output directory contents, but allow the directory itself to be tracked via .gitkeep
+output/*
+!output/.gitkeep
 
 # Ignore python environment files
 __pycache__/
