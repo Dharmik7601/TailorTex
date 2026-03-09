@@ -1,1 +1,3 @@
-Retain the "Amazon Web Services" experience, including all of its bullet points and metadata, exactly as provided without any modifications.
+Retain the "Amazon Web Services" experience, including all of its bullet points and metadata, exactly as provided.
+Confine all generated or modified experience bullet points (excluding the AWS section) strictly to core software development tasks, anchoring the history to traditional software engineering and omitting AI or AI-related tools.
+Design any generated or fabricated projects such that they can be fully recreated and run locally on an individual developer's machine.

@@ -15,8 +15,11 @@ TailorTex is a CLI-based Python tool designed to automatically rewrite and tailo
 1. **Python 3.x**
 2. **Google GenAI SDK**: `pip install -r requirements.txt` (Installs `google-genai` and `python-dotenv`)
 3. **LaTeX Distribution**: You MUST have a working installation of LaTeX on your system (e.g., [MiKTeX](https://miktex.org/) on Windows or TeX Live on Mac/Linux) so that the `pdflatex` command is available in your system PATH.
-4. **Gemini API Key**: Create a `.env` file in the root directory and add:
-   `GEMINI_API_KEY=your_api_key_here`
+4. **Gemini API Key & Backup Location**: Create a `.env` file in the root directory and add:
+   ```env
+   GEMINI_API_KEY=your_api_key_here
+   BACKUP_LOCATION=C:\Path\To\Your\Backup\Folder
+   ```
 
 ## Project Structure
 
@@ -24,6 +27,7 @@ TailorTex is a CLI-based Python tool designed to automatically rewrite and tailo
 TailorTex/
 ├── main.py                    # The core generation script
 ├── compile.py                 # Standalone script for manual PDF compilation
+├── backup.py                  # Script to backup generated PDFs and TeXs
 ├── Makefile                   # Make commands for easy execution
 ├── master_resume.tex          # YOUR base resume template (edit this!)
 ├── output/                    # Generated PDFs and TeX files are saved here
@@ -49,10 +53,23 @@ make run NAME=TargetCompany
 *This will generate `TargetCompany_Resume.tex`, compile it to a `.pdf`, save it in the `output/` folder, and automatically open it for you.*
 
 **Using Enhancements (Constraints & Projects):**
-If you want to feed the AI your `prompts/user_constraints.txt` and `prompts/additional_projects.txt` files, simply set their flags to `true`:
+By default, the `Makefile` automatically sets `CONSTRAINTS=true` and `PROJECTS=true`. If you want to feed the AI your `prompts/user_constraints.txt` and `prompts/additional_projects.txt` files, simply use the command above! If you wish to *disable* them for a specific run, you can set them to false:
 ```bash
-make run JD_FILE=job.txt NAME=TargetCompany CONSTRAINTS=true PROJECTS=true
+make run NAME=TargetCompany CONSTRAINTS=false PROJECTS=false
 ```
+
+### Step 3: Manual Compilation
+If you manually tweak the generated `output/TargetCompany_Resume.tex` file and just want to re-compile it to a PDF without making another API call, use:
+```bash
+make compile TEX_FILE="output/TargetCompany_Resume.tex" NAME="Final_Draft"
+```
+
+### Step 4: Backing Up Your Resumes
+If you want to save all the resumes you generated today into a secure, organized folder system, simply run:
+```bash
+make backup
+```
+This command reads the `BACKUP_LOCATION` from your `.env` file, extracts the target company name from your generated files (e.g., `TargetCompany`), creates a dedicated folder for that company, and copies both the `.pdf` and `.tex` files into it while automatically injecting today's date into the filename (e.g., `TargetCompany_9thMarch2026_Resume.pdf`).
 
 ## Customizing the Prompts
 

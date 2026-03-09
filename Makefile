@@ -8,9 +8,11 @@ TEX_FILE = temp_resume.tex
 NAME = Output
 OUTPUT_DIR = output
 CONSTRAINTS = true
-PROJECTS = false
+PROJECTS = true
+INPUT_DIR = output
+SUFFIX_TEX = _Resume.tex
 
-.PHONY: all run clean help
+.PHONY: all run compile clean backup help
 
 # Default target
 all: run
@@ -27,20 +29,26 @@ run:
 # Manually compile a local LaTeX file
 compile:
 	@echo "Compiling $(TEX_FILE) into $(NAME)_Resume.pdf..."
-	$(PYTHON) compile.py --tex "$(TEX_FILE)" --prefix "$(NAME)" --output "$(OUTPUT_DIR)"
+	$(PYTHON) compile.py --tex "./$(INPUT_DIR)/$(NAME)$(SUFFIX_TEX)" --prefix "$(NAME)" --output "$(OUTPUT_DIR)"
 	@echo "Opening generated PDF..."
 	@cmd /c start "" "$(OUTPUT_DIR)\$(NAME)_Resume.pdf"
 
 # Clean up generated files and inputs
 clean:
-	@echo "Cleaning up $(OUTPUT_DIR) folder and $(JD_FILE)..."
-	-@if exist "$(OUTPUT_DIR)" rmdir /s /q "$(OUTPUT_DIR)"
-	-@if exist "$(JD_FILE)" del /f /q "$(JD_FILE)"
+	@echo "Cleaning up files in $(OUTPUT_DIR) and emptying $(JD_FILE)..."
+	-@if exist "$(OUTPUT_DIR)" del /q "$(OUTPUT_DIR)\*"
+	-@if exist "$(JD_FILE)" type nul > "$(JD_FILE)"
 	@echo "Cleanup complete."
 
-# Help menu
+# Backup PDFs generated today to the location specified in .env
+backup:
+	@echo "Backing up today's PDFs..."
+	$(PYTHON) backup.py
+
+# Print help message
 help:
-	@echo "Available commands:"
-	@echo "  make run    - Runs the TailorTex Python script with $(JD_FILE)"
-	@echo "  make clean  - Deletes the $(OUTPUT_DIR) directory and $(JD_FILE)"
-	@echo "  make help   - Displays this help message"
+	@echo "Usage:"
+	@echo "  make run JD_FILE=<file> NAME=<name> [CONSTRAINTS=true] [PROJECTS=true]"
+	@echo "  make compile TEX_FILE=<file> NAME=<name>"
+	@echo "  make backup"
+	@echo "  make clean"

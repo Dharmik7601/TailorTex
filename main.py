@@ -37,7 +37,17 @@ def main():
         job_description = f.read()
         
     with open(master_resume_path, 'r', encoding='utf-8') as f:
-        master_resume = f.read()
+        master_resume_full = f.read()
+
+    # Split preamble to save tokens
+    delimiter = r"\begin{document}"
+    if delimiter in master_resume_full:
+        parts = master_resume_full.split(delimiter, 1)
+        preamble = parts[0]
+        resume_body = delimiter + parts[1]
+    else:
+        print(f"Error: {delimiter} not found in {master_resume_path}")
+        sys.exit(1)
 
     if not os.path.exists(prompt_path):
         print(f"Error: Prompt file not found at {prompt_path}")
@@ -67,7 +77,7 @@ def main():
             print(f"Warning: --projects flag was used, but {projects_path} was not found.")
 
     # Phase 2: Prompt Engineering
-    user_prompt = f"""Job Description:\n{job_description}\n\n---\nMaster Resume (LaTeX):\n{master_resume}\n"""
+    user_prompt = f"""Job Description:\n{job_description}\n\n---\nMaster Resume Body (LaTeX):\n{resume_body}\n"""
     
     print("Sending prompt to Gemini API...")
     
@@ -123,7 +133,7 @@ def main():
     output_tex_path = os.path.join(output_dir, output_tex_filename)
     
     with open(output_tex_path, 'w', encoding='utf-8') as f:
-        f.write(clean_latex)
+        f.write(preamble + "\n" + clean_latex)
         
     print(f"Saved generated LaTeX to {output_tex_path}")
     
