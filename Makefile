@@ -36,7 +36,7 @@ compile:
 # Clean up generated files and inputs
 clean:
 	@echo "Cleaning up files in $(OUTPUT_DIR) and emptying $(JD_FILE)..."
-	-@if exist "$(OUTPUT_DIR)" del /q "$(OUTPUT_DIR)\*"
+	-@if exist "$(OUTPUT_DIR)" del /q "$(OUTPUT_DIR)\*.pdf" "$(OUTPUT_DIR)\*.tex" "$(OUTPUT_DIR)\*.aux" "$(OUTPUT_DIR)\*.log" "$(OUTPUT_DIR)\*.out"
 	-@if exist "$(JD_FILE)" type nul > "$(JD_FILE)"
 	@echo "Cleanup complete."
 
