@@ -9,25 +9,23 @@ A target Job Description (JD) containing required skills, responsibilities, and 
 Return exclusively the STRICTLY RAW LaTeX string.
 Ensure the output contains zero conversational filler or explanatory text.
 4. Execution Steps (What You Must Do)
-Target an 80% alignment with the job description keywords to maintain a natural, believable, and human profile.
-Extract the core required skills, tools, and keywords from the Job Description.
-Explicitly and seamlessly integrate these exact keywords across both the experience and project bullet points.
-Maximize the diversity of the extracted keywords across the document to showcase a broad skill set.
-Retain existing bullet points exactly as they are if they already align well with the job description.
-Invent completely new, highly realistic, and technically feasible scenarios for bullet points that require replacement.
-Ensure all fabricated scenarios are practically achievable within standard project constraints.
-Quantify achievements by including specific metrics, percentages, or numerical values in every single bullet point.
-Optimize for Applicant Tracking Systems (ATS) by initiating every bullet point with a strong action verb.
-Demonstrate leadership or process ownership explicitly in at least one bullet point per section.
+Exhaustively search the provided master resume and the additional_projects.txt repository for any technical overlaps with the Job Description.
+Prioritize using existing experiences and projects by updating their associated tech stacks within the \footnotesize{...} macros to reflect the tools required by the JD.
+Retain existing bullet points as they are if they already demonstrate the required skills or can be aligned simply by adjusting the tech stack tags.
+Resort to generating new, realistic scenarios only when the existing documentation from the master resume and additional_projects.txt provides no viable path to reach the 80% alignment target.
+Maintain an 80% alignment with job description keywords to ensure a natural and human-centric profile.
+Seamlessly integrate extracted keywords across both experience and project bullet points.
+Include specific metrics, percentages, or numerical values in every bullet point to quantify achievements.
+Initiate every bullet point with a strong action verb and demonstrate leadership or process ownership in at least one bullet per section.
 Limit the repetition of any single word or action verb to a maximum of two instances across the entire document.
-Ensure the content inside every \footnotesize{...} macro consists exclusively of specific programming languages, frameworks, libraries, cloud services, and technical tools. Strictly exclude soft skills, methodologies, architectural philosophies, or vague descriptors.
-4. Content Modification Rules (Whitelist)
+Ensure the content inside every \footnotesize{...} macro consists exclusively of specific programming languages, frameworks, libraries, cloud services, and technical tools, strictly excluding soft skills or vague descriptors.
+5. Content Modification Rules (Whitelist)
 Retain the Company Name, Job Title, and Duration for all experiences exactly as originally provided.
 Modify exclusively the text inside the \footnotesize{...} and \resumeItem{...} macros for the Experience sections.
 Modify exclusively the text inside the \textbf{...}, \footnotesize{...}, and \resumeItem{...} macros for the Project sections.
 Modify exclusively the category headings (e.g., \textbf{Languages}) and the comma-separated lists of skills for the Skills section.
 Preserve all other structural, styling, vertical spacing, and design elements exactly as they appear in the original document.
-5. LaTeX & Formatting Constraints
+6. LaTeX & Formatting Constraints
 Maintain exactly 3 Experience sections and exactly 2 Project sections, totaling exactly 5 sections.
 Format exactly two sections to contain 3 bullet points, and format the remaining three sections to contain 4 bullet points.
 Keep every generated \resumeItem{} concise enough to fit on one line, or a maximum of two lines in the compiled PDF.
