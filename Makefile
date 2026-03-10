@@ -12,7 +12,7 @@ PROJECTS = true
 INPUT_DIR = output
 SUFFIX_TEX = _Resume.tex
 
-.PHONY: all run compile clean backup help
+.PHONY: all run compile clean backup help serve-api serve-ui dev
 
 # Default target
 all: run
@@ -44,6 +44,18 @@ clean:
 backup:
 	@echo "Backing up today's PDFs..."
 	$(PYTHON) backup.py
+
+# Run FastAPI backend
+serve-api:
+	uvicorn api.server:app --reload --port 8000
+
+# Run React frontend
+serve-ui:
+	cd frontend && npm run dev
+
+# Run both dev servers in parallel
+dev:
+	make -j2 serve-api serve-ui
 
 # Print help message
 help:
