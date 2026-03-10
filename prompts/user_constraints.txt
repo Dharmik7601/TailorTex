@@ -1,4 +1,4 @@
 Retain the "Accenture" experience, including all of its bullet points and metadata, exactly as provided.
-Change the "Rochester Regional health" and 3rd section in Experience only a little bit, keep close to original.
+Change the "Rochester Regional Health" and 3rd section in Experience just a little bit, keep close to original.
 Confine all generated or modified experience bullet points (excluding the Accenture section) strictly to core software development tasks, anchoring the history to traditional software engineering and omitting AI or AI-related tools.
 Design any generated or fabricated projects such that they can be fully recreated and run locally on an individual developer's machine.
