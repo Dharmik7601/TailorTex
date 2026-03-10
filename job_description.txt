@@ -1,0 +1,50 @@
+What You’ll Bring
+
+0-2 years’ experience as a data engineer, ETL developer, or similar role (internships experience included). 
+
+Experience with cloud data technologies (Azure preferred) such as Azure Synapse Analytics and Spark Pools.
+
+Strong expertise with SQL and Python. Exposure to DAX and M preferred.
+
+Familiarity with PowerBI or Tableau is a plus.
+
+Experience utilizing structured and unstructured data.
+
+Knowledge of data modeling, warehousing principles, ETL/ELT, and metadata standards.  
+
+Understanding of CI/CD pipelines and DevOps processes is a plus.
+
+Ability to relate data opportunities to business needs.
+
+Strong communication, collaboration, curiosity, and perseverance skills.  
+
+Analytical mindset with problem solving and troubleshooting skills. 
+
+Bachelor’s degree in Computer Science, Analytics, Information Systems or similar field required.
+
+
+
+Our culture and commitment to our people is what sets us apart. We foster an environment of mutual respect, integrity, and unconditional interest in the individual and collective success of our professionals. Our model and entrepreneurial mindset offer a rewarding, challenging, and highly flexible path. As a Data Engineer, you will build a meaningful and fulfilling career with the support of professional development resources and mentorships including our First Year Experience program, Individual Development Plans, and Career Path resources and tools. You will be surrounded by exceptional talent who will support your development as both a world-class professional and a highly effective leader.
+
+
+
+
+
+Additional Job Description
+
+Builds infrastructures that collect and process data according to company needs
+
+Scales and builds out infrastructure to extract meaningful data
+
+Designs, develops and implements statistical models to carry out various aspects of classification and information extraction from data
+
+Leverages existing data infrastructure to fulfill all data-related requests; maintain data models
+
+Analyze data to spot anomalies, trends and correlate similar data sets.
+
+Troubleshoots and identifies possible solutions
+
+Other duties as assigned
+
+
+

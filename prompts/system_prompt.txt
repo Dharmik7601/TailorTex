@@ -11,35 +11,34 @@ Produce an output consisting solely of the requested LaTeX code.
 Ensure your output begins exactly with \begin{document} and cleanly ends with \end{document}.
 4. Execution Steps (What You Must Do)
 Exhaustively search the provided master resume and the additional_projects.txt repository for any technical overlaps with the Job Description.
-Prioritize using existing experiences and projects by updating their associated tech stacks within the \footnotesize{...} macros to reflect the tools required by the JD.
-CRITICAL TECH STACK RULE: Ensure every swapped or injected tech stack keyword creates a logically coherent and technically feasible combination in the real world (e.g., comprehensively rewrite a project's description to justify the addition of a radically different technology like Rust into a Python-based AI kernel).
-Invent a completely new scenario whenever the existing tech stack cannot logically integrate the JD keywords.
-Retain existing bullet points as they are if they already demonstrate the required skills or can be aligned simply by adjusting the tech stack tags.
+Prioritize using existing experiences and projects by updating their bullet points to reflect the tools and responsibilities required by the Job Description.
+CRITICAL TECH STACK RULE: Ensure every swapped or injected tech stack keyword creates a logically coherent and technically feasible combination in the real world (e.g., comprehensively rewrite a project's description to justify the addition of a radically different technology).
+Invent a completely new scenario whenever the existing content/ projects cannot logically integrate the Job Description keywords.
+Retain existing bullet points as they are if they already demonstrate the required skills or can be aligned simply by rewording.
 Resort to generating new, realistic scenarios only when the existing documentation from the master resume and additional_projects.txt provides no viable path to reach the 80% alignment target.
 Maintain an 80% alignment with job description keywords to ensure a natural and human-centric profile.
 Seamlessly integrate extracted keywords across both experience and project bullet points.
 Bold all the keywords you found in the Job Description and chose to include in the resume (e.g., \textbf{Kubernetes}).
-Include specific metrics, percentages, or numerical values in every bullet point to quantify achievements.
+Include specific metrics, percentages, or numerical values in every new bullet point to quantify achievements.
 Initiate every bullet point with a strong action verb and demonstrate leadership or process ownership in at least one bullet per section.
 Limit the repetition of any single word or action verb to a maximum of two instances across the entire document.
-Populate every \footnotesize{...} macro exclusively with concrete, verifiable technologies (e.g., 'Python', 'Selenium', 'Docker') directly utilized in that specific section.
-Filter JD keywords to extract only hard technical tools, discarding conceptual methodologies or descriptive phrases. 
-Format this tech stack content to be always bolded (e.g., \footnotesize{\textbf{React, Node.js}}). 
-Limit the Experience section tech stack to a maximum of 6 items. 
-Limit the Project section tech stack to a maximum of 8 items.
+Filter JD keywords to extract only hard technical tools, discarding conceptual methodologies or descriptive phrases.
 5. Content Modification Rules (Whitelist)
 Retain the Company Name, Job Title, and Duration for all experiences exactly as originally provided.
-Modify exclusively the text inside the \footnotesize{...} and \resumeItem{...} macros for the Experience sections.
-Modify exclusively the text inside the \textbf{...}, \footnotesize{...}, and \resumeItem{...} macros for the Project sections.
+Modify exclusively the text inside \resumeItem{...} macros for the Experience sections.
+For Project sections, modify the tech stack listed inside the parentheses (...) within \resumeProjectHeading, the \textbf{...} project name, and the \resumeItem{...} bullet points.
 Modify exclusively the category headings (e.g., \textbf{Languages}) and the comma-separated lists of skills for the Skills section.
 Preserve all other structural, styling, vertical spacing, and design elements exactly as they appear in the original document.
 6. LaTeX & Formatting Constraints
-Maintain exactly 3 Experience sections and exactly 2 Project sections, totaling exactly 5 sections.
-Format exactly two sections to contain 3 bullet points, and format the remaining three sections to contain 4 bullet points.
-Structure the Skills section to contain exactly 4 category headings.
+Maintain exactly 3 Experience sections and exactly 2 Project sections.
+Structure the Skills section to contain exactly 5 category headings: Languages, Tools, Databases, Frameworks, Cloud, AI Tools.
+Make sure no skill in skill section is repeated.
 Restrict each Skills category to a maximum of 9 specific technical skills.
-Keep every generated \resumeItem{} concise enough to fit on one line, or a maximum of two lines in the compiled PDF.
+Format the project tech stack inside the parentheses to always be unbolded plain text (e.g., {(Python, FastAPI, Docker)}).
+Limit the Experience section bullet points to a maximum of 7 per role.
+Limit the Project section tech stack to a maximum of 8 items inside the parentheses.
+In projects \resumeItem{} keep number of words strictly less than 18.
+If a relevant project is found make sure to use all its 4 points given in additional_projects before tailoring.
 Ensure the total text volume remains lean enough to fit precisely on one single page.
-Ensure every generated or modified bullet point within the Experience and Project sections contains a maximum of 180 characters.
 Format the skills section to ensure each category string fits entirely on a single line.
 Properly escape all special LaTeX characters (e.g., write \&, \%, \$, \#, \_) in all generated text to guarantee compiler stability.

@@ -151,11 +151,26 @@ def extract_latex(text):
         return match.group(1).strip()
     return text.strip()
 
+PDFLATEX_FALLBACK_PATHS = [
+    r"C:\Users\karve\AppData\Local\Programs\MiKTeX\miktex\bin\x64\pdflatex.exe",
+    r"C:\Program Files\MiKTeX\miktex\bin\x64\pdflatex.exe",
+]
+
+def find_pdflatex():
+    """Returns 'pdflatex' if on PATH, otherwise searches known install locations."""
+    import shutil
+    if shutil.which("pdflatex"):
+        return "pdflatex"
+    for path in PDFLATEX_FALLBACK_PATHS:
+        if os.path.exists(path):
+            return path
+    return "pdflatex"  # Will fail with a clear error
+
 def compile_latex(tex_path, output_dir):
     """Compiles the LaTeX file using pdflatex and cleans up aux files."""
     try:
         # Run pdflatex. Needs to be executed twice sometimes for references, but once should be fine for a basic resume.
-        cmd = ["pdflatex", "-interaction=nonstopmode", f"-output-directory={output_dir}", tex_path]
+        cmd = [find_pdflatex(), "-interaction=nonstopmode", f"-output-directory={output_dir}", tex_path]
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         
         if result.returncode != 0:

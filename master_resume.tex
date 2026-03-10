@@ -14,12 +14,25 @@
 \input{glyphtounicode}
 
 
+%----------FONT OPTIONS----------
+% sans-serif
+% \usepackage[sfdefault]{FiraSans}
+% \usepackage[sfdefault]{roboto}
+% \usepackage[sfdefault]{noto-sans}
+% \usepackage[default]{sourcesanspro}
+
+% serif
+% \usepackage{CormorantGaramond}
+% \usepackage{charter}
+
+
 \pagestyle{fancy}
-\fancyhf{}
+\fancyhf{} % clear all header and footer fields
 \fancyfoot{}
 \renewcommand{\headrulewidth}{0pt}
 \renewcommand{\footrulewidth}{0pt}
 
+% Adjust margins
 \addtolength{\oddsidemargin}{-0.5in}
 \addtolength{\evensidemargin}{-0.5in}
 \addtolength{\textwidth}{1in}
@@ -32,13 +45,16 @@
 \raggedright
 \setlength{\tabcolsep}{0in}
 
-
+% Sections formatting
 \titleformat{\section}{
   \vspace{-4pt}\scshape\raggedright\large
 }{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
 
+% Ensure that generate pdf is machine readable/ATS parsable
 \pdfgentounicode=1
 
+%-------------------------
+% Custom commands
 \newcommand{\resumeItem}[1]{
   \item\small{
     {#1 \vspace{-2pt}}
@@ -77,90 +93,139 @@
 \newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
 
 %-------------------------------------------
-%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 \begin{document}
+
+%----------HEADING----------%
 \begin{center}
 \vspace{-20pt}
-    \textbf{\Large \scshape Dharmik Patel} \\ \vspace{1pt}
-    \small +1-(585)-224-5490 $|$ \href{mailto:dp9208@g.rit.edu}{{\underline{dharmik7601@gmail.com}}} $|$ 
-    \href{http://linkedin.com/in/dharmik7601}{\underline{linkedin.com/in/dharmik7601}} $|$
-    \href{http://github.com/Dharmik7601}{\underline{github.com/Dharmik7601}} $|$
-    {Rochester, NY, USA}
-\vspace{-10pt}
+    \textbf{\Large \scshape Prabhav Karve} \\ \vspace{1pt}
+
+    \small {Rochester, NY, US} $|$ (585) 957 3674 $|$ \href{mailto:pk6004@g.rit.edu}{{\underline{pk6004@rit.edu}}} $|$
+    \href{https://www.linkedin.com/in/prabhav-karve-11300a145/}{\underline{LinkedIn}} $|$
+    \href{https://prabhav-karve-portfolio2-0.vercel.app/}{\underline{Portfolio}} $|$
+    {Open to relocation }$|$
+    {Available Spring 2026}
+\vspace{-3pt}
 \end{center}
-%-----------EXPERIENCE-----------
-\section{Experience}
-  \resumeSubHeadingListStart
-      \resumeSubheading{Amazon Web Services (AWS) \textbar{} \footnotesize{Bedrock, Lambda, CDK, Java, TypeScript}}{May 2025 - Aug 2025}
-      {Software Development Engineer Intern}{East Palo Alto, CA, USA}
-       \resumeItemListStart
-       \vspace{-6pt}
-            \resumeItem{Engineered an internal LLM analyzer tool using AWS Bedrock for code reviews across 4 key areas (security, performance, style, test coverage), working within an agile framework.}
-            \resumeItem{Authored design document and deployment of a secure, serverless application using the AWS CDK (IaC), orchestrating 8+ core AWS services including Lambda, Bedrock, Step Functions, Opensearch, and DynamoDB.}
-            \resumeItem{Built a data ingestion pipeline to fetch and update over 5,000+ high-value internal data sources, enhancing the LLM's contextual awareness for impact analysis.}
-            \resumeItem{Secured the application's VPC and all services using precise IAM roles and granular Security Group (ingress/egress) rules to enforce least-privilege access.}
-    \resumeItemListEnd
-    \resumeSubheading
-      {Acute Informatics Pvt. Ltd. \textbar{} \footnotesize{MERN, REST APIs, JWT, AWS, MongoDB}}{Dec 2022 -- Apr 2023 }
-      {Software Developer Intern}{Ahmedabad, GJ, India}
-       \resumeItemListStart
-       \vspace{-6pt}
-            \resumeItem{Orchestrated a 5-service microservice application application using Docker and Kubernetes, authoring 10+ configuration files to automate scaling and updates, which reduced new environment setup time for the team by over 50\%.}
-            \resumeItem{Established an event-driven architecture using RabbitMQ to decouple a central API Gateway from backend services, successfully processing and delivering over 1,000+ automated email notifications daily.}
-            \resumeItem{Developed and containerized microservices, including a Flask authentication service using MySQL and a video processing worker that leveraged MongoDB GridFS for storing large media files.}
-    \resumeItemListEnd
-    \resumeSubheading
-      {WPServiceDesk Pvt. Ltd. \textbar{} \footnotesize{Flask, Kubernetes, Docker, RabbitMQ, CI/CD}}{May 2022 -- Sep 2022}
-      {Software Developer Intern}{Ahmedabad, GJ, India}
-      \resumeItemListStart
-       \vspace{-6pt}
-            \resumeItem{Built 2 full-stack MERN applications (Loan Origination \& Billing System) from scratch, delivering 15+ features including KYC document uploads, invoice generation, and admin/user panels.}
-            \resumeItem{Implemented and secured 40+ REST API endpoints for both applications using Node.js, Express, and JWT for authentication with bcrypt hashing.}
-            \resumeItem{Designed and managed 12+ MongoDB data models and integrated key AWS services for features like file storage (S3) and automated notifications (SES).}
-      \resumeItemListEnd
-  \resumeSubHeadingListEnd
-%-----------PROJECTS-----------
-\section{Projects}
-    \resumeSubHeadingListStart
-      \resumeProjectHeading
-          {\textbf{Distributed File System \textbar{} \footnotesize{C++, P2P, AES Encryption, CAS} }}{}
-          \resumeItemListStart
-            \resumeItem{Created a peer-to-peer distributed file system in C++, facilitating decentralized file storage and data retrieval across 10+ nodes.}
-            \resumeItem{Devised secure file storage and retrieval mechanisms, incorporating encryption (AES) and hashing (SHA-256, MD5) for data integrity and security.}
-            \resumeItem{Incorporated homomorphic content-addressable storage (CAS) across 10 nodes, achieving a 15\% reduction in data redundancy and improving data retrieval speeds.}
-            \resumeItem{Constructed a storage engine capable of efficient file operations, including secure storing, retrieval, deletion, and verification across a divided network.}
-          \resumeItemListEnd
-          
-        \resumeProjectHeading
-          {\textbf{Go HTTP Server \textbar{} \footnotesize{Go, TCP, Concurrency, HTTP/1.1 Parser}}}{}
-          \resumeItemListStart
-            \resumeItem{Developed a custom HTTP server from scratch in Go, utilizing low-level TCP sockets to manage and process raw HTTP requests reducing the final binary size by an estimated 50\% by avoiding external runtime dependencies.}
-            \resumeItem{Devised a resilient request parser using a finite state machine to handle the sequential states of an HTTP request ensuring compliance with HTTP/1.1 protocol standards.}
-            \resumeItem{Leveraged Go's native concurrency model that allows the server to handle over 1,000+ connections, ensuring high availability and responsiveness under load.}
-            \resumeItem{Implemented multi-type content serving (video files, proxied requests) and chunked transfer encoding with SHA-256 checksums for data integrity.}
-          \resumeItemListEnd
-    \resumeSubHeadingListEnd
-%-------------------------------------------
-%-----------PROGRAMMING SKILLS-----------
-\section{Technical Skills}
- \begin{itemize}[leftmargin=0.15in, label={}]
-    \small{\item{
-     \textbf{Languages}{: Python, C++, Go (GoLang), Java, TypeScript, JavaScript} \\
-     \textbf{DevOps, Cloud, \& Tools}{: Docker, Kubernetes, RabbitMQ, AWS, GCP, Azure, Terraform, CDK, Git, Postman} \\
-     \textbf{Databases \& Data Stores}{: MySQL, MongoDB, PostgreSQL, DynamoDB, Opensearch, S3} \\
-     \textbf{Backend Frameworks}{: Flask, Spring Boot, FastAPI, Django, Node.js, Express.js, Gin }
-    }}
- \end{itemize}
+
+
 %-----------EDUCATION-----------
 \section{Education}
   \resumeSubHeadingListStart
     \resumeSubheading
-      {Rochester Institute of Technology}{Aug 2023 -- Dec 2025}
-      {MS in Computer Science \textbar{} \textbf{Advanced Algorithms, Artificial Intelligence, Big Data Analytics}}{Rochester, NY, USA}
+      {Rochester Institute of Technology}{Aug 2023 - Dec 2025}
+      {Master of Science in Computer Science (3.8/4.0)}{Rochester, NY, USA}
+      {}
       \vspace{-5pt}
     \resumeSubheading
-      {Indus University}{Aug 2019 -- Jun 2023}
-      {BE in Computer Science \textbar{} \textbf{Software Engineering, Cloud Computing, Distributed Systems}}{Ahmedabad, GJ, India}
-      \vspace{-5pt}
+       {International Institute of Information Technology }{Aug 2017 - Jul 2021}
+      {Bachelor of Engineering in Information Technology (3.5/4.0)}{Pune, MH, India}
+      {}
   \resumeSubHeadingListEnd
+
+
+
+%-----------PROGRAMMING SKILLS-----------
+\section{Technical Skills}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+     \textbf{Languages}{: Python, Java, JavaScrip, C++, GoLang, GraphQL} \\
+     \textbf{Tools}{:  VLM, LLM, NLP, PowerBI, PySpark, Kafka, Airflow, Azure Data factory, Jenkin, Git, BitBucket} \\
+     \textbf{Databases}{: MS SQL, PostgreSQL, Snowflake, Teradata, Oracle PL/SQL, MongoDB}\\
+     \textbf{Frameworks}{: Tensorflow, Pytorch, Pandas, Numpy,  FastAPI, LangChain, RAG } \\
+     \textbf{Cloud}{: Azure Functions, Blob Storage, AWS EC2, RDS, S3, Lambda}
+    }}
+ \end{itemize}
+
+
+
+%-----------EXPERIENCE-----------
+\section{Experience}
+  \resumeSubHeadingListStart
+
+    \resumeSubheading
+      {Rochester Regional Health}{Jun 2025 - Dec 2025}
+      {Data Engineering Co-op}{Rochester, NY}
+    \resumeItemListStart
+       \vspace{-5pt}
+
+            \resumeItem{Rectified financial report accuracy to 100\% by optimizing 40+ scripts using pandas and Cortex Generative AI in snowflake's LLM tools.}
+            \resumeItem{Delivered healthcare analytics reports by integrating data from 23+ sources through ETL pipelines built in Azure Data Factory to predict expense, revenue and healthcare trend using machine learning.}
+            \resumeItem
+            {Automated data collection and data load into 27+ KPI tables in Snowflake  by developing Python scripts to extract data from REST APIs, improving data availability and reporting speed.}
+            \resumeItem{Designed 17+ interactive Power BI dashboards to visualize work-time and expense KPI for heath-care.}
+            \vspace{3pt}
+    \resumeItemListEnd
+
+    \resumeSubheading
+      {Accenture}{Sept 2021 - Mar 2023}
+      {Data Engineering Associate}{Pune, India}
+
+      \resumeItemListStart
+       \vspace{-6pt}
+             \resumeItem{Developed a Business Intelligence platform for Ireland’s biggest financial service using Java and Snowflake.}
+            \resumeItem{Implemented 20+  data pipelines for feature engineering ensuring scalable data handling for ML operations deployed using Jenkins CI/CD pipeline.}
+            \resumeItem{Enabled data availability at latency less than 100 ms by ingesting near-real-time transactional data using Kafka .}
+            \resumeItem{ Constructed over 50 SQL scripts and and orchestrated scalable ETL pipelines on Airflow for regulatory financial reporting.}
+            \resumeItem{Collaborated across the data modeling team to build the target schemas on Snowflake preliminary to the data visualization on Power BI.}
+            \resumeItem{Resolved 77 \% of the total resolved defects in FY 2022 - 23 by designing defect resolutions in large data processing pipelines.}
+            \resumeItem{Enhanced the deployment efficiency by automating 10+ monotonous validation checks using Python.}
+      \resumeItemListEnd
+
+      \resumeSubheading
+      {TechSmart Systems}{Jun 2019 - Aug 2019}
+      {Data Science Intern (Machine Learning)}{Pune, India}
+      \resumeItemListStart
+       \vspace{-6pt}
+            \resumeItem{Conducted analysis and visualization of customer-behaviors pattern using machine learning for investment banking data.}
+            \resumeItem{Designed ML models to predict customer enrollment/ dis-enrollment and loan procurement patterns.}
+            \resumeItem{Devised a custom copy- paste operation for region of interest for input images using OpenCV.}
+            \resumeItem{Presented comparative studies of the ML models Logistic Regression (89.45\%), Random Forest (90.5\%), Neural Net (88.4 \%).}
+
+            \vspace{-10pt}
+      \resumeItemListEnd
+  \resumeSubHeadingListEnd
+
+
+%-----------PROJECTS-----------
+\section{Projects}
+    \resumeSubHeadingListStart
+      \resumeProjectHeading
+          {\textbf{RAG system for financial statement intelligence }$|$ {(LLM, Python, PostgreSQL, FAISS, LangChain, GraphQL)}}{}
+          \resumeItemListStart
+          \vspace{4pt}
+            \resumeItem{Devised a RAG platform to semantically analyze 30+ financial statements and answer complex, stock-related queries.}
+            \resumeItem{Implemented retrieval using FAISS for vector storage, LLM and LangChain for 95\% accurate context-driven insights.}
+            \resumeItem{Created a GraphQL-based API layer on PostgreSQL and built a Next.js frontend for an intuitive, question-answer interface.}
+            \resumeItem{Containerized using Docker and deployed on AWS EC2 with RDS for PostgreSQL for scalable cloud hosting.}
+            \vspace{-5pt}
+          \resumeItemListEnd
+    \resumeSubHeadingListEnd
+
+    \vspace{2pt}
+
+    \resumeSubHeadingListStart
+      \resumeProjectHeading
+          {\textbf{Facial Embeddings assisted Multimodal RAG }$|$ {(VLM, FAISS, LangChain, RAG, Python)}}{}
+          \resumeItemListStart
+          \vspace{4pt}
+            \resumeItem{Devised a vision based RAG pipeline which receives imagery and textual query input to fetch patients medical history.}
+            \resumeItem{Preprocessed Synthea dataset for 1000+ medial records and facial dataset of 8000 images to store in vectorDB.}
+            \resumeItem{Designed hyperparameter tuning pipeline mimicking MiniCPM-like VLM using CLIP vision encoder and BERT tokenizer.}
+            \resumeItem{Applied InsightFace Facial recognition algorithm for fetching facial embeddings.}
+          \resumeItemListEnd
+    \resumeSubHeadingListEnd
+
+
+\section{Achievements and Awards}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{{Received 40\% performance-based scholarship at Rochester Institute of Technology: 27000\$.} \\{Authored and published a research paper in Springer’s conference on “Conversational image captioning in YOLO and LSTM”.} \\
+    }}
+ \end{itemize}
+
+
+%-------------------------------------------
 \end{document}

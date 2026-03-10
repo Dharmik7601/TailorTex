@@ -1,13 +1,20 @@
-1. ZeroFrame | C++, Go, Python, gRPC, ONNX Runtime, CUDA, Shared Memory
-• Engineered a decentralized microservices pipeline that decouples video ingestion, orchestration, and inference into independent processes, enabling asynchronous workload distribution across an N-node concurrent worker pool.
-• Implemented a zero-copy Inter-Process Communication (IPC) protocol utilizing a 10-slot memory-mapped ring buffer, managing a contiguous 62MB block in shared memory to completely bypass gRPC serialization overhead for large payloads.
-• Developed a hardware-accelerated C++ inference engine using ONNX Runtime and CUDA to execute INT8 quantized models, performing in-place memory mutations to minimize cache misses and avoid redundant data copying.
-• Architected a fault-tolerant gRPC orchestration layer with a 500ms failover mechanism, ensuring continuous video uptime by implementing a raw-frame pass-through protocol during C++ worker node crashes.
-2. CudaSwarm | Go, C++, gRPC, Docker Compose, NVML
-• Constructed a local-first ML orchestrator, simulating a 4-node distributed cluster (1 master, 3 workers) via Docker Compose to dispatch and manage PyTorch transfer learning workloads without cloud dependencies.
-• Bridged Go and C++ via cgo to wrap NVIDIA Management Library (NVML) APIs, streaming hardware-level VRAM telemetry to the master at strict 1-second intervals to prevent container Out-Of-Memory crashes.
-• Implemented a VRAM-aware scheduling algorithm that evaluates incoming ML payloads against real-time worker telemetry, achieving <60ms scheduling latency from job submission to node allocation.
-• Architected a remote workload execution engine to spawn training scripts, establishing gRPC server-streaming pipelines to capture and pipe 100% of distributed stdout/stderr logs back to the master in real time.
-ViT Triton Accelerator | Python, PyTorch, OpenAI Triton, GPU Memory Tiling, Autograd
-• Orchestrated a fused Flash Attention mechanism leveraging runtime SRAM autotuning across 3 distinct custom Triton kernels (Forward, Preprocess, Backward), achieving a 1.08x speedup over PyTorch’s native C++ backend.
-• Modeled an IO-aware backward pass utilizing on-the-fly gradient recomputation and Log-Sum-Exp state tracking, mathematically reducing HBM spatial complexity from O(N^2) to O(N) to safely enable long-sequence training.
+1. Facial Embeddings assisted Multimodal RAG | (VLM, FAISS, LangChain, RAG, Python)
+• Devised a vision based RAG pipeline which receives imagery and textual query input to fetch patients medical history.
+• Preprocessed Synthea dataset for 1000+ medial records and facial dataset of 8000 images to store in vectorDB.
+• Designed hyperparameter tuning pipeline mimicking MiniCPM-like VLM using CLIP vision encoder and BERT tokenizer.
+• Applied InsightFace Facial recognition algorithm for fetching facial embeddings.
+2. RAG system for financial statement intelligence | (Next.js, Python, PostgreSQL, FAISS, LangChain, GraphQL)
+• Devised a RAG platform to semantically analyze 30+ financial statements and answer complex, stock-related queries.
+• Implemented MCP pipeline leveraging FAISS for vector storage and LangChain for 95% accurate context-driven retrieval of insights.
+• Created a GraphQL-based API layer on PostgreSQL and built a Next.js frontend for an intuitive, question-answer interface.
+• Containerized using Docker and deployed on AWS EC2 with RDS for PostgreSQL for scalable cloud hosting.
+3. Students Accommodation rental | (React.js, Python, FastAPI, DynamoDB, Docker, Jenkins)
+• Led a team of three to launch a platform for international students to search or sublet residences in 50+ cities.
+• Loaded with features like Authentication, Search Filters, Messaging, allowing seamless user experience.
+• Composed a responsive UI with React.js and used FastAPI to handle 14 endpoints for secure server communication.
+• Engineered a Jenkins build pipeline (CI/CD) with containerization using Docker for quick deployment and release.
+4. English Vocabulary application | (React.js, Python, Flask, PostgreSQL, Gitlab, GCP)
+• Built a comprehensive SaaS application to enhance English vocabulary, featuring 3,400 GRE words across 34 chapters.
+• Established a vocabulary score metric based on the swipe interactions. Users can practice, test, and evaluate the progress.
+• Constructed frontend with React.js and Material UI, with Flask handling 15 endpoints on PostgreSQL database.
+• Containerized the project using Docker and utilized GitLab to set up a CI/CD stream on GCP to expedite builds.
