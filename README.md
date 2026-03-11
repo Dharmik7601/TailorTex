@@ -30,6 +30,8 @@ TailorTex/
 ├── backup.py                  # Script to backup generated PDFs and TeXs
 ├── Makefile                   # Make commands for easy execution
 ├── master_resume.tex          # YOUR base resume template (edit this!)
+├── job_description.txt        # The target job description for Gemini (make run)
+├── job_description-claude.txt # The target job description for Claude (make claude)
 ├── output/                    # Generated PDFs and TeX files are saved here
 └── prompts/                   # Contains AI instructions:
     ├── system_prompt.txt      # The core rules the AI must follow
@@ -41,7 +43,7 @@ TailorTex/
 
 ### Step 1: Prepare your inputs
 1. Place your base resume in `master_resume.tex`. If you change the structure of this template, ensure you update the instructions in `prompts/system_prompt.txt` as they are specifically designed to follow it.
-2. Save the target Job Description inside `job_description.txt`.
+2. Save the target Job Description inside `job_description.txt` (for Gemini) or `job_description-claude.txt` (for Claude). This separation allows you to generate two tailored resumes in parallel.
 
 ### Step 2: Run the Pipeline (via Makefile)
 The easiest way to use the program is via the `Makefile`. 
@@ -57,6 +59,13 @@ By default, the `Makefile` automatically sets `CONSTRAINTS=true` and `PROJECTS=t
 ```bash
 make run NAME=TargetCompany CONSTRAINTS=false PROJECTS=false
 ```
+
+### Step 2.5: Run using Claude Code (Parallel Setup)
+If you configure Claude Code and want to test two different job descriptions concurrently, populate `job_description-claude.txt` and run:
+```bash
+make claude NAME=AlternativeCompany
+```
+This triggers the local Claude Code CLI (`claude`) to independently process `job_description-claude.txt` while leaving `job_description.txt` for Gemini. It will automatically compile into `output/AlternativeCompany_Resume.pdf`.
 
 ### Step 3: Manual Compilation
 If you manually tweak the generated `output/TargetCompany_Resume.tex` file and just want to re-compile it to a PDF without making another API call, use:

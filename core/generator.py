@@ -100,6 +100,12 @@ def generate_resume(
 
     clean_latex = _extract_latex(llm_output)
 
+    # Convert any stray markdown bold (**text**) to LaTeX \textbf{text}
+    clean_latex = re.sub(r'\*\*(.+?)\*\*', r'\\textbf{\1}', clean_latex)
+
+    # Remove blank lines before \resumeItem entries (blank lines cause paragraph breaks in LaTeX)
+    clean_latex = re.sub(r'\n[ \t]*\n(\s*\\resumeItem)', r'\n\1', clean_latex)
+
     if r"\begin{document}" not in clean_latex or r"\end{document}" not in clean_latex:
         raise ValueError("LLM output is missing \\begin{document} or \\end{document}. Response may be truncated.")
 

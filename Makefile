@@ -12,7 +12,7 @@ PROJECTS = true
 INPUT_DIR = output
 SUFFIX_TEX = _Resume.tex
 
-.PHONY: all run compile clean backup help serve-api serve-ui dev
+.PHONY: all run claude compile clean backup help serve-api serve-ui dev
 
 # Default target
 all: run
@@ -26,6 +26,11 @@ run:
 	@echo "Opening generated PDF..."
 	@cmd /c start "" "$(OUTPUT_DIR)\$(NAME)_Resume.pdf"
 
+# Run the TailorTex pipeline using Claude Code
+claude:
+	@echo "Running TailorTex pipeline with Claude Code for $(NAME)..."
+	claude -p "/tailor-resume $(NAME)"
+
 # Manually compile a local LaTeX file
 compile:
 	@echo "Compiling $(TEX_FILE) into $(NAME)_Resume.pdf..."
@@ -35,9 +40,10 @@ compile:
 
 # Clean up generated files and inputs
 clean:
-	@echo "Cleaning up files in $(OUTPUT_DIR) and emptying $(JD_FILE)..."
+	@echo "Cleaning up files in $(OUTPUT_DIR) and emptying job description files..."
 	-@if exist "$(OUTPUT_DIR)" del /q "$(OUTPUT_DIR)\*.pdf" "$(OUTPUT_DIR)\*.tex" "$(OUTPUT_DIR)\*.aux" "$(OUTPUT_DIR)\*.log" "$(OUTPUT_DIR)\*.out"
 	-@if exist "$(JD_FILE)" type nul > "$(JD_FILE)"
+	-@if exist "job_description-claude.txt" type nul > "job_description-claude.txt"
 	@echo "Cleanup complete."
 
 # Backup PDFs generated today to the location specified in .env
@@ -61,6 +67,7 @@ dev:
 help:
 	@echo "Usage:"
 	@echo "  make run JD_FILE=<file> NAME=<name> [CONSTRAINTS=true] [PROJECTS=true]"
+	@echo "  make claude NAME=<name>"
 	@echo "  make compile TEX_FILE=<file> NAME=<name>"
 	@echo "  make backup"
 	@echo "  make clean"
