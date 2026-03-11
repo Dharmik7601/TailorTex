@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>TailorTex 2.0</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+
+  <header>
+    <h1>TailorTex 2.0</h1>
+    <span id="api-status">Checking...</span>
+  </header>
+
+  <!-- FORM -->
+  <div id="form-section">
+
+    <div class="field">
+      <label for="company-name">Company / Output Title</label>
+      <input type="text" id="company-name" placeholder="e.g. Google">
+    </div>
+
+    <div class="field">
+      <label for="jd">Job Description</label>
+      <textarea id="jd" placeholder="Paste or auto-extract from page..."></textarea>
+    </div>
+
+    <div class="field">
+      <label for="resume-select">Base Resume</label>
+      <select id="resume-select">
+        <option value="">Loading...</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="method-select">AI Method</label>
+      <select id="method-select">
+        <option value="gemini">Gemini</option>
+        <option value="claudecli">Claude</option>
+      </select>
+    </div>
+
+    <div class="checkboxes">
+      <label><input type="checkbox" id="use-constraints" checked> Constraints</label>
+      <label><input type="checkbox" id="use-projects" checked> Projects</label>
+    </div>
+
+    <button id="generate-btn" disabled>Generate Resume</button>
+  </div>
+
+  <!-- STATUS -->
+  <div id="status-section" style="display:none">
+    <div id="status-badge">Running...</div>
+    <pre id="logs"></pre>
+    <a id="download-btn" style="display:none" target="_blank">Download PDF</a>
+    <button id="back-btn">Back</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

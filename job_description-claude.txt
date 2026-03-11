@@ -1,6 +1,0 @@
-WHAT YOU BRING
-
-Strong computer science fundamentals: A solid understanding of data structures, algorithms, concurrency, and design principles. You can apply these concepts to solve practical engineering problems.
-Proficiency in C++: You're comfortable writing clean, efficient, and well-structured code in C++.
-Problem-solving aptitude: A proactive and self-motivated approach to identifying and solving complex problems with a focus on delivering high-quality, impactful results.
-Collaboration and communication skills: The ability to articulate complex technical ideas clearly and work effectively in a team-based, open office environment.

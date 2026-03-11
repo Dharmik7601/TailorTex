@@ -69,34 +69,7 @@ def generate_resume(
 
     user_prompt = f"Job Description:\n{job_description}\n\n---\nMaster Resume Body (LaTeX):\n{resume_body}\n"
 
-    # Gemini API call
-    api_key = os.environ.get("GEMINI_API_KEY")
-    client = genai.Client(api_key=api_key) if api_key else genai.Client()
-
-    models_to_try = ["gemini-2.5-flash-preview-05-20", "gemini-2.5-flash"]
-    llm_output = None
-    last_error = None
-
-    for model_name in models_to_try:
-        try:
-            log_callback(f"Trying model: {model_name}...")
-            response = client.models.generate_content(
-                model=model_name,
-                contents=user_prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_prompt,
-                    temperature=0.2,
-                ),
-            )
-            llm_output = response.text
-            log_callback(f"Successfully generated content using {model_name}.")
-            break
-        except Exception as e:
-            last_error = e
-            log_callback(f"Model {model_name} failed: {e}. Attempting fallback...")
-
-    if llm_output is None:
-        raise RuntimeError(f"All Gemini models failed. Last error: {last_error}")
+    llm_output = _call_gemini(system_prompt, user_prompt, log_callback)
 
     clean_latex = _extract_latex(llm_output)
 
@@ -104,7 +77,9 @@ def generate_resume(
     clean_latex = re.sub(r'\*\*(.+?)\*\*', r'\\textbf{\1}', clean_latex)
 
     # Remove blank lines before \resumeItem entries (blank lines cause paragraph breaks in LaTeX)
-    clean_latex = re.sub(r'\n[ \t]*\n(\s*\\resumeItem)', r'\n\1', clean_latex)
+    # Use \s*\n to catch lines with only whitespace, and loop to handle multiple consecutive blank lines
+    while re.search(r'\n[ \t]*\n[ \t]*(?=\\resumeItem)', clean_latex):
+        clean_latex = re.sub(r'\n[ \t]*\n([ \t]*\\resumeItem)', r'\n\1', clean_latex)
 
     if r"\begin{document}" not in clean_latex or r"\end{document}" not in clean_latex:
         raise ValueError("LLM output is missing \\begin{document} or \\end{document}. Response may be truncated.")
@@ -126,6 +101,30 @@ def generate_resume(
     log_callback("Done!")
 
     return output_tex_path, output_pdf_path
+
+
+def _call_gemini(system_prompt: str, user_prompt: str, log_callback) -> str:
+    api_key = os.environ.get("GEMINI_API_KEY")
+    client = genai.Client(api_key=api_key) if api_key else genai.Client()
+    models_to_try = ["gemini-2.5-flash-preview-05-20", "gemini-2.5-flash"]
+    last_error = None
+    for model_name in models_to_try:
+        try:
+            log_callback(f"Trying model: {model_name}...")
+            response = client.models.generate_content(
+                model=model_name,
+                contents=user_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    temperature=0.2,
+                ),
+            )
+            log_callback(f"Successfully generated content using {model_name}.")
+            return response.text
+        except Exception as e:
+            last_error = e
+            log_callback(f"Model {model_name} failed: {e}. Attempting fallback...")
+    raise RuntimeError(f"All Gemini models failed. Last error: {last_error}")
 
 
 def _extract_latex(text: str) -> str:

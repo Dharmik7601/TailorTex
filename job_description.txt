@@ -1,6 +1,28 @@
-WHAT YOU BRING
-
-Strong computer science fundamentals: A solid understanding of data structures, algorithms, concurrency, and design principles. You can apply these concepts to solve practical engineering problems.
-Proficiency in C++: You're comfortable writing clean, efficient, and well-structured code in C++.
-Problem-solving aptitude: A proactive and self-motivated approach to identifying and solving complex problems with a focus on delivering high-quality, impactful results.
-Collaboration and communication skills: The ability to articulate complex technical ideas clearly and work effectively in a team-based, open office environment.
+What You'll Do
+
+Contribute to the development and maintenance of Ruby-based services and APIs and JavaScript frontends
+Implement well-scoped features, bug fixes, and refactors under guidance from senior engineers
+Write clear, maintainable code with appropriate test coverage
+Participate in code reviews and incorporate feedback
+Use AI-assisted development tools for coding, testing, and debugging
+Collaborate with Product and Customer Success teams on platform questions
+Follow best practices for secure and scalable web application development
+Required Qualifications
+
+Experience with Ruby and Ruby on Rails
+Front-end experience with modern JavaScript frameworks
+Understanding of relational databases and SQL
+Familiarity with RESTful APIs
+Familiarity with AI/LLM-related tooling and workflows
+Experience writing tests and participating in code reviews
+Comfort working in an agile development environment
+Strong communication skills and growth mindset
+AI-Native Expectations
+
+Candidates should be comfortable using AI tools to assist with coding, testing, documentation, and learning. This includes validating AI-generated outputs, applying sound engineering judgment, and remaining curious about how AI can responsibly improve developer productivity.
+
+Nice to Have
+
+Cloud experience (AWS, Azure, or GCP)
+CI/CD and automated deployment exposure
+Knowledge of web application security best practices

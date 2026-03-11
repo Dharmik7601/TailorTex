@@ -52,19 +52,19 @@ Claude Code can run this pipeline directly without using the Gemini API. Use the
 ```
 
 This will:
-1. Read `Master_Resume.tex`, `job_description-claude.txt`, and all prompt files
+1. Read `Master_Resume.tex`, `job_description.txt`, and all prompt files
 2. Generate a tailored LaTeX resume body following all rules in `prompts/system_prompt.txt`
 3. Reassemble the full `.tex` (preamble + tailored body)
 4. Save to `output/<NAME>_Resume.tex`
 5. Compile to `output/<NAME>_Resume.pdf` via `pdflatex`
 
 **Before running**, make sure:
-- `job_description-claude.txt` contains the target job posting
+- `job_description.txt` contains the target job posting
 - `NAME` is the company or role identifier you want in the filename
 
 **Non-interactive one-liner** (useful for scripting):
 ```bash
-claude -p "Tailor the resume for the job in job_description-claude.txt. Follow all rules in prompts/system_prompt.txt, optionally use prompts/user_constraints.txt and prompts/additional_projects.txt. Save output as output/Google_SWE_Resume.tex and compile it with pdflatex."
+claude -p "Tailor the resume for the job in job_description.txt. Follow all rules in prompts/system_prompt.txt, optionally use prompts/user_constraints.txt and prompts/additional_projects.txt. Save output as output/Google_SWE_Resume.tex and compile it with pdflatex."
 ```
 
 ## Resume Generation Rules (for Claude Code)
@@ -72,7 +72,7 @@ claude -p "Tailor the resume for the job in job_description-claude.txt. Follow a
 When generating a tailored resume, always:
 
 1. Read `Master_Resume.tex` and split at `\begin{document}` — send only the body to avoid unnecessary preamble changes
-2. Read `job_description-claude.txt` for the target role requirements
+2. Read `job_description.txt` for the target role requirements
 3. Read `prompts/system_prompt.txt` for the core modification rules (whitelist of editable sections)
 4. Optionally read `prompts/user_constraints.txt` and `prompts/additional_projects.txt` if they are non-empty
 5. Only modify content inside `\footnotesize{...}`, `\resumeItem{...}`, and `\textbf{...}` macros — do NOT change the LaTeX structure or preamble

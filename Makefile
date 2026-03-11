@@ -43,7 +43,6 @@ clean:
 	@echo "Cleaning up files in $(OUTPUT_DIR) and emptying job description files..."
 	-@if exist "$(OUTPUT_DIR)" del /q "$(OUTPUT_DIR)\*.pdf" "$(OUTPUT_DIR)\*.tex" "$(OUTPUT_DIR)\*.aux" "$(OUTPUT_DIR)\*.log" "$(OUTPUT_DIR)\*.out"
 	-@if exist "$(JD_FILE)" type nul > "$(JD_FILE)"
-	-@if exist "job_description-claude.txt" type nul > "job_description-claude.txt"
 	@echo "Cleanup complete."
 
 # Backup PDFs generated today to the location specified in .env
@@ -53,7 +52,7 @@ backup:
 
 # Run FastAPI backend
 serve-api:
-	uvicorn api.server:app --reload --port 8000
+	uvicorn api.server:app --reload --port 8001
 
 # Run React frontend
 serve-ui:
