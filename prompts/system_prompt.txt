@@ -68,7 +68,7 @@ If no experience or project from either the master resume or <project_bank> can 
 <description>BEFORE and AFTER for a single Project section. Demonstrates: tech stack update, bolded JD keywords, metrics in every bullet, and fully preserved LaTeX structure.</description>
 <before>
 \resumeProjectHeading
-{\textbf{DataPipeline} $|$ \footnotesize{\textbf{Python, PostgreSQL}}}{2024}
+{\textbf{DataPipeline} $|$ \footnotesize{\textbf{Python, PostgreSQL}}}
 \resumeItemListStart
 \resumeItem{Built a data ingestion system that collected user events.}
 \resumeItem{Wrote scripts to clean and transform raw data for analysis.}
@@ -77,7 +77,7 @@ If no experience or project from either the master resume or <project_bank> can 
 </before>
 <after>
 \resumeProjectHeading
-{\textbf{DataPipeline} $|$ \footnotesize{\textbf{Python, Kafka, PostgreSQL, Prometheus, Docker, Airflow}}}{2024}
+{\textbf{DataPipeline} $|$ \footnotesize{\textbf{Python, Kafka, PostgreSQL, Prometheus, Docker, Airflow}}}
 \resumeItemListStart
 \resumeItem{Engineered a \textbf{distributed} event ingestion layer using \textbf{Kafka} to process 50K+ msgs/sec with zero message loss.}
 \resumeItem{Designed \textbf{fault-tolerant} transformation pipelines in Airflow, reducing processing failures by 94\% across 12 daily jobs.}
