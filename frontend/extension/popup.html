@@ -12,7 +12,7 @@
     <span id="api-status">Checking...</span>
   </header>
 
-  <!-- FORM -->
+  <!-- FORM (always visible) -->
   <div id="form-section">
 
     <div class="field">
@@ -48,12 +48,12 @@
     <button id="generate-btn" disabled>Generate Resume</button>
   </div>
 
-  <!-- STATUS -->
-  <div id="status-section" style="display:none">
-    <div id="status-badge">Running...</div>
-    <pre id="logs"></pre>
-    <a id="download-btn" style="display:none" target="_blank">Download PDF</a>
-    <button id="back-btn">Back</button>
+  <!-- QUEUE (always visible below form) -->
+  <div id="queue-section">
+    <div id="queue-header">
+      <span id="slot-counter">0 / 5 slots used</span>
+    </div>
+    <div id="job-list"></div>
   </div>
 
   <script src="popup.js"></script>

@@ -1,28 +1,17 @@
-What You'll Do
+Your role and responsibilities
+As a Software Developer you'll participate in many aspects of the software development lifecycle, such as design, code implementation, testing, and support. You will create software that enables your clients' hybrid-cloud and AI journeys.
 
-Contribute to the development and maintenance of Ruby-based services and APIs and JavaScript frontends
-Implement well-scoped features, bug fixes, and refactors under guidance from senior engineers
-Write clear, maintainable code with appropriate test coverage
-Participate in code reviews and incorporate feedback
-Use AI-assisted development tools for coding, testing, and debugging
-Collaborate with Product and Customer Success teams on platform questions
-Follow best practices for secure and scalable web application development
-Required Qualifications
+You'll have the opportunity to work with the latest technologies, ensuring the applications delivered are high performing, highly available, responsive, and maintainable.
 
-Experience with Ruby and Ruby on Rails
-Front-end experience with modern JavaScript frameworks
-Understanding of relational databases and SQL
-Familiarity with RESTful APIs
-Familiarity with AI/LLM-related tooling and workflows
-Experience writing tests and participating in code reviews
-Comfort working in an agile development environment
-Strong communication skills and growth mindset
-AI-Native Expectations
+Your primary responsibilities include:
 
-Candidates should be comfortable using AI tools to assist with coding, testing, documentation, and learning. This includes validating AI-generated outputs, applying sound engineering judgment, and remaining curious about how AI can responsibly improve developer productivity.
+•Analytical Problem-Solving and Solution Enhancement: Analyze, validate and propose improvements to existing failures, with the support of the architect and technical leader.
 
-Nice to Have
+•Comprehensive Engagement Across Process Phases: Involvement in every step of the process, from design, development, testing release changes and troubleshoot where necessary, providing a great customer service.
 
-Cloud experience (AWS, Azure, or GCP)
-CI/CD and automated deployment exposure
-Knowledge of web application security best practices
+•Strategic Stakeholder Engagement and Innovative Coding Solutions: Drive key discussions with your stakeholders and analyze the current landscape for opportunities to operate and code creative solutions.
+
+Required education
+Bachelor's Degree
+Required technical and professional expertise
+Design, develop, and maintain robust, scalable, and efficient backend applications using Java, Spring Boot, and Microservices architecture.Participate in the full software development lifecycle, including requirement analysis, design, coding, testing, deployment, and maintenance.Develop RESTful APIs and integrate with internal and external systems, ensuring secure and efficient communication between services.Implement microservice-based architectures, promoting reusability, modularity, and resilience across distributed systems.Collaborate with DevOps teams to implement and maintain CI/CD pipelines using tools such as Jenkins, GitLab CI, or GitHub Actions for automated build, test, and deployment processes."

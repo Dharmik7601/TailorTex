@@ -4,33 +4,84 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Project Does
 
-TailorTex is a CLI Python tool that generates a customized LaTeX resume tailored to a specific job description, then compiles it to PDF via `pdflatex`.
+TailorTex generates customized LaTeX resumes tailored to a specific job description and compiles them to PDF via `pdflatex`. It has two modes of operation:
 
-## Commands
+1. **CLI** — directly via `make run` (legacy, Gemini API only)
+2. **Extension + API** — a Chrome side-panel extension that talks to a local FastAPI backend, supporting both Gemini and Claude Code as generation methods, with a multi-job queue
+
+---
+
+## Project Structure
+
+```
+TailorTex/
+├── backend/
+│   ├── api/
+│   │   ├── server.py          # FastAPI app — all endpoints
+│   │   └── schemas.py         # Pydantic models
+│   └── core/
+│       ├── generator.py       # Gemini API call + pdflatex compile
+│       └── compiler.py        # Standalone LaTeX compiler
+├── frontend/
+│   └── extension/             # Chrome MV3 side-panel extension
+│       ├── manifest.json
+│       ├── background.js      # Opens side panel on action click
+│       ├── popup.html         # Always-visible form + queue panel
+│       ├── popup.js           # All extension logic
+│       └── popup.css          # Dark theme styles
+├── prompts/
+│   ├── system_prompt.txt      # Core LLM rules (whitelist of editable sections)
+│   ├── user_constraints.txt   # Per-run hard constraints
+│   └── additional_projects.txt# Project bank for swapping into resume
+├── resumes/                   # Base .tex resume files selectable in the extension
+├── output/                    # Generated .tex and .pdf files (gitignored)
+├── master_resume.tex          # Root-level master resume (legacy CLI path)
+├── job_description.txt        # Used by CLI and Claude Code slash command
+├── Makefile
+└── requirements.txt
+```
+
+---
+
+## Running the Backend
 
 ```bash
-# Install dependencies
+cd backend
+uvicorn api.server:app --port 8001 --reload
+```
+
+The backend must be running at `http://localhost:8001` for the extension to work.
+
+---
+
+## Loading the Extension
+
+1. Go to `chrome://extensions`
+2. Enable **Developer mode**
+3. Click **Load unpacked** → select `frontend/extension/`
+4. The extension opens as a **side panel** (not a popup)
+
+After any code change to the extension files, click the **reload icon** on the extension card in `chrome://extensions`, then close and reopen the side panel.
+
+---
+
+## CLI Commands (legacy)
+
+```bash
 pip install -r requirements.txt
 
-# Full pipeline: generate tailored resume + compile PDF
-make run NAME=TargetCompany
-
-# Disable optional prompt injections
+make run NAME=TargetCompany                          # generate + compile
 make run NAME=TargetCompany CONSTRAINTS=false PROJECTS=false
-
-# Manually re-compile a .tex file without an API call
-make compile NAME=TargetCompany
-
-# Backup output/ PDFs and .tex files to BACKUP_LOCATION (from .env)
-make backup
-
-# Clear output/ directory and empty job_description.txt
-make clean
+make compile NAME=TargetCompany                      # re-compile existing .tex
+make backup                                          # backup output/ to BACKUP_LOCATION
+make clean                                           # clear output/
 ```
+
+---
 
 ## Environment Setup
 
-Create a `.env` file in the root:
+`.env` file in the root:
 ```env
 GEMINI_API_KEY=your_api_key_here
 BACKUP_LOCATION=C:\Path\To\Your\Backup\Folder
@@ -38,76 +89,150 @@ BACKUP_LOCATION=C:\Path\To\Your\Backup\Folder
 
 `pdflatex` must be installed and on PATH (MiKTeX on Windows, TeX Live on Mac/Linux).
 
-## How to Generate a Resume with Claude Code
+---
 
-Claude Code can run this pipeline directly without using the Gemini API. Use the custom slash command:
+## Backend API — Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check |
+| GET | `/resumes` | List `.tex` files in `resumes/` |
+| POST | `/generate` | Submit a job (form fields below) |
+| GET | `/queue` | All jobs currently in memory |
+| GET | `/status/{job_id}` | SSE stream of log lines + completion event |
+| GET | `/status/{job_id}/json` | Snapshot status (non-streaming) |
+| GET | `/open/{job_id}?company=X` | Open the PDF with the system default viewer |
+| GET | `/download/{job_id}` | Serve the PDF as a file download |
+
+### POST `/generate` form fields
+| Field | Type | Description |
+|-------|------|-------------|
+| `company_name` | string | Used in output filename |
+| `job_description` | string | Full JD text |
+| `resume_name` | string | e.g. `resumes/master_resume.tex` |
+| `resume_file` | file | Alternative to resume_name |
+| `method` | string | `"gemini"` or `"claudecli"` |
+| `use_constraints` | bool | Append user_constraints.txt to prompt |
+| `use_projects` | bool | Append additional_projects.txt to prompt |
+
+Returns `{"job_id": "<uuid>"}`. Max 5 active jobs (queued + running); returns HTTP 429 if full.
+
+---
+
+## Job Queue Architecture
+
+### Per-method worker queues
+Each AI method has its own `queue.Queue` and a single dedicated daemon worker thread:
+
+```
+_work_queues = {
+    "gemini":    queue.Queue(),   →  thread: worker-gemini
+    "claudecli": queue.Queue(),   →  thread: worker-claudecli
+}
+```
+
+**Behaviour:**
+- Gemini + Claude jobs run **in parallel** (separate threads)
+- Two Gemini jobs run **sequentially** (one worker, one at a time)
+- Two Claude jobs run **sequentially** (one worker, one at a time)
+- No threads ever block spinning — workers sleep on `queue.get()`
+
+### Job lifecycle
+`queued` → (picked up by worker) → `running` → `completed` | `error`
+
+On **completion**: backend automatically calls `os.startfile(pdf_path)` to open the PDF in the system default viewer.
+
+On **error**: full Python traceback is written to the job's log list (visible in the extension Logs panel).
+
+### In-memory only
+The `jobs` dict is in-memory and lost on server restart. The `/open` endpoint handles this with a fallback: if the job_id is not in memory, it reconstructs the path as `output/{company}_Resume.pdf` using the `company` query param passed by the extension.
+
+---
+
+## Extension Architecture (`frontend/extension/`)
+
+### State management
+Job state is stored in `chrome.storage.local` under key `ttjobs` — an array of job objects:
+
+```json
+{
+  "ttjobs": [
+    {
+      "job_id": "uuid",
+      "company": "Google",
+      "resume_name": "resumes/master_resume.tex",
+      "method": "gemini",
+      "status": "queued",
+      "submitted_at": 1234567890,
+      "log": []
+    }
+  ]
+}
+```
+
+### Cross-tab sync
+`chrome.storage.onChanged` listener re-renders the queue panel whenever any tab updates storage. All open side panels stay in sync automatically.
+
+### SSE connections
+Each active job gets an `EventSource` connection to `/status/{job_id}`. Connections are tracked in a module-level `Map` (`sseMap`) to prevent duplicates. On `completed`/`error` SSE events, the job status is updated in storage and the SSE is closed.
+
+### Key functions in popup.js
+| Function | Purpose |
+|----------|---------|
+| `generate()` | Submits form to `/generate`, pushes job to storage |
+| `renderQueue(jobs)` | Rebuilds job card DOM from jobs array |
+| `attachSSE(job_id)` | Opens SSE stream, updates log + status in storage |
+| `getJobs()` / `saveJobs()` | Read/write `chrome.storage.local` |
+| `updateJobStatus()` | Patch a single job's fields in storage |
+| `removeJob()` | Remove a job from storage (discard button) |
+
+### Queue UI behaviour
+- Form stays visible at all times (no more single-job status screen)
+- Slot counter shows `N / 5 slots used`
+- Generate button disabled when 5 slots are full or API is offline
+- Each job card shows: company, resume file, method badge, status badge, collapsible logs, Open PDF button (completed only), X discard button
+- **Open PDF** calls `GET /open/{job_id}?company={company}` — server opens file locally, nothing sent back to extension
+
+---
+
+## How to Generate a Resume with Claude Code (slash command)
 
 ```
 /tailor-resume <NAME>
 ```
 
-**Example:**
-```
-/tailor-resume Google_SWE
-```
-
-This will:
-1. Read `Master_Resume.tex`, `job_description.txt`, and all prompt files
-2. Generate a tailored LaTeX resume body following all rules in `prompts/system_prompt.txt`
-3. Reassemble the full `.tex` (preamble + tailored body)
-4. Save to `output/<NAME>_Resume.tex`
-5. Compile to `output/<NAME>_Resume.pdf` via `pdflatex`
-
-**Before running**, make sure:
-- `job_description.txt` contains the target job posting
-- `NAME` is the company or role identifier you want in the filename
-
-**Non-interactive one-liner** (useful for scripting):
-```bash
-claude -p "Tailor the resume for the job in job_description.txt. Follow all rules in prompts/system_prompt.txt, optionally use prompts/user_constraints.txt and prompts/additional_projects.txt. Save output as output/Google_SWE_Resume.tex and compile it with pdflatex."
-```
+This reads `job_description.txt` and generates `output/<NAME>_Resume.tex` + PDF following all rules in `prompts/system_prompt.txt`.
 
 ## Resume Generation Rules (for Claude Code)
 
-When generating a tailored resume, always:
+1. Read `master_resume.tex` (or `resumes/master_resume.tex`) and split at `\begin{document}` — send only the body
+2. Read `job_description.txt`
+3. Read `prompts/system_prompt.txt`
+4. Optionally read `prompts/user_constraints.txt` and `prompts/additional_projects.txt` if non-empty
+5. Only modify content inside `\footnotesize{...}`, `\resumeItem{...}`, and `\textbf{...}` macros — do NOT change structure or preamble
+6. Guarantee one page
+7. Reassemble full `.tex` with original preamble prepended
+8. Write to `output/<NAME>_Resume.tex`
+9. Compile: `pdflatex -interaction=nonstopmode -output-directory=output output/<NAME>_Resume.tex`
+10. Delete aux files: `.aux`, `.log`, `.out`
+11. Open PDF: `start output/<NAME>_Resume.pdf`
 
-1. Read `Master_Resume.tex` and split at `\begin{document}` — send only the body to avoid unnecessary preamble changes
-2. Read `job_description.txt` for the target role requirements
-3. Read `prompts/system_prompt.txt` for the core modification rules (whitelist of editable sections)
-4. Optionally read `prompts/user_constraints.txt` and `prompts/additional_projects.txt` if they are non-empty
-5. Only modify content inside `\footnotesize{...}`, `\resumeItem{...}`, and `\textbf{...}` macros — do NOT change the LaTeX structure or preamble
-6. Guarantee the resume fits one page
-7. Reassemble the full `.tex` by prepending the original preamble (everything up to and including `\begin{document}`)
-8. Write the complete file to `output/<NAME>_Resume.tex`
-9. Compile using: `pdflatex -interaction=nonstopmode -output-directory=output output/<NAME>_Resume.tex`
-10. Delete auxiliary files: `output/<NAME>_Resume.aux`, `.log`, `.out`
-11. Open the PDF: `start output/<n>_Resume.pdf`
-
-## Architecture
-
-The pipeline has four stages in `main.py`:
-
-1. **Load** — reads `Master_Resume.tex`, `job_description.txt`, and prompt files. Splits the `.tex` at `\begin{document}` to send only the body (not the preamble) to the LLM, saving tokens.
-2. **Prompt assembly** — builds the system prompt from `prompts/system_prompt.txt`, optionally appending `prompts/user_constraints.txt` (`--constraints`) and `prompts/additional_projects.txt` (`--projects`).
-3. **API call** — calls Gemini with a model fallback list (`gemini-3-flash-preview` → `gemini-2.5-flash`). Temperature is set to `0.2` for deterministic LaTeX structure. Strips markdown fences from the response via regex.
-4. **Compile** — runs `pdflatex` via subprocess, saves `.tex` and `.pdf` to `output/`, deletes `.aux`/`.log`/`.out`.
-
-Supporting scripts:
-- `compile.py` — standalone LaTeX compiler (used by `make compile`)
-- `backup.py` — copies `output/*.pdf` and `output/*.tex` to `BACKUP_LOCATION/<CompanyName>/`, injecting today's date into filenames
+---
 
 ## Key Prompt Files
 
 | File | Purpose |
 |------|---------|
-| `prompts/system_prompt.txt` | Core AI rules — whitelist of what the LLM may modify, formatting constraints, one-page guarantee logic |
-| `prompts/user_constraints.txt` | Per-run hard rules (e.g., "don't change X job") |
-| `prompts/additional_projects.txt` | Project bank the AI can swap into the resume |
+| `prompts/system_prompt.txt` | Core AI rules — whitelist of editable sections, one-page guarantee |
+| `prompts/user_constraints.txt` | Per-run hard rules |
+| `prompts/additional_projects.txt` | Project bank the AI can swap in |
 
-**If you change the LaTeX template structure in `Master_Resume.tex`, you must update the "Content Modification Rules (Whitelist)" section in `prompts/system_prompt.txt`** — the AI's edit permissions are section-specific (`\footnotesize{...}`, `\resumeItem{...}`, `\textbf{...}` macros).
+**If you change the LaTeX template structure in `master_resume.tex`, update the whitelist in `prompts/system_prompt.txt`.**
+
+---
 
 ## Output Conventions
 
-- Output files are named `{NAME}_Resume.tex` and `{NAME}_Resume.pdf` in `output/`
-- Backup filenames inject the date: `{Company}_{9thMarch2026}_Resume.pdf`
-- Company name for backup grouping is parsed from the filename prefix (text before the first `-` or `_`)
+- Output files: `output/{NAME}_Resume.tex` and `output/{NAME}_Resume.pdf`
+- Backup filenames inject date: `{Company}_{9thMarch2026}_Resume.pdf`
+- Company name for backup: parsed from filename prefix (text before first `-` or `_`)

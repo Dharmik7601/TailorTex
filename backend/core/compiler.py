@@ -6,8 +6,17 @@ from dotenv import load_dotenv
 load_dotenv()
 
 PDFLATEX_FALLBACK_PATHS = [
-    r"C:\Users\karve\AppData\Local\Programs\MiKTeX\miktex\bin\x64\pdflatex.exe",
+    # Windows — MiKTeX (system-wide and per-user installs)
     r"C:\Program Files\MiKTeX\miktex\bin\x64\pdflatex.exe",
+    r"C:\Program Files\MiKTeX 2.9\miktex\bin\x64\pdflatex.exe",
+    os.path.expanduser(r"~\AppData\Local\Programs\MiKTeX\miktex\bin\x64\pdflatex.exe"),
+    # macOS — MacTeX / Homebrew
+    "/Library/TeX/texbin/pdflatex",
+    "/usr/local/bin/pdflatex",
+    "/opt/homebrew/bin/pdflatex",
+    # Linux
+    "/usr/bin/pdflatex",
+    "/usr/local/bin/pdflatex",
 ]
 
 

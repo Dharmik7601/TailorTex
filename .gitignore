@@ -2,6 +2,14 @@
 output/*
 !output/.gitkeep
 
+# Ignore the resume directory contents, but allow the directory itself to be tracked via .gitkeep
+resume/*
+!resume/.gitkeep
+
+# Ignore the prompts directory contents, but allow the directory itself to be tracked via .gitkeep
+prompts/*
+!prompts/.gitkeep
+
 # Ignore python environment files
 __pycache__/
 *.pyc
@@ -13,3 +21,7 @@ __pycache__/
 *.out
 *.pdf
 temp_resume*.tex
+
+# Ignore venv directory
+venv
+

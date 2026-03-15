@@ -9,7 +9,7 @@ from core.compiler import compile_latex
 
 load_dotenv()
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def generate_resume(
@@ -50,24 +50,39 @@ def generate_resume(
         system_prompt = f.read()
 
     # Conditionally append constraints
+    # NOTE: constraints file already contains its own <constraints> XML tags
     if use_constraints:
         constraints_path = os.path.join(BASE_DIR, "prompts", "user_constraints.txt")
         if os.path.exists(constraints_path):
             with open(constraints_path, "r", encoding="utf-8") as f:
-                system_prompt += f"\n\nUSER REQUIREMENTS & CONSTRAINTS\n{f.read()}\n"
+                system_prompt += f"\n\n{f.read()}\n"
         else:
             log_callback("Warning: user_constraints.txt not found, skipping.")
 
     # Conditionally append extra projects
+    # NOTE: projects file already contains its own <project_bank> XML tags
     if use_projects:
         projects_path = os.path.join(BASE_DIR, "prompts", "additional_projects.txt")
         if os.path.exists(projects_path):
             with open(projects_path, "r", encoding="utf-8") as f:
-                system_prompt += f"\n\nADDITIONAL USER PROJECTS\nYou may use these projects directly or modify them to align with the job description:\n{f.read()}\n"
+                system_prompt += f"\n\n{f.read()}\n"
         else:
             log_callback("Warning: additional_projects.txt not found, skipping.")
 
-    user_prompt = f"Job Description:\n{job_description}\n\n---\nMaster Resume Body (LaTeX):\n{resume_body}\n"
+    # ORDER MATTERS — resume body first (bulk data, lower attention zone),
+    # job description near the end (high recency attention),
+    # explicit task instruction last (maximum recency attention).
+    user_prompt = f"""<resume_body>
+                        {resume_body}
+                        </resume_body>
+
+                        <job_description>
+                        {job_description}
+                        </job_description>
+
+                        <task>
+                        Using the rules in the system prompt, rewrite the resume body above to match this job description. Return only the raw LaTeX from \\begin{{document}} to \\end{{document}}.
+                    </task>"""
 
     llm_output = _call_gemini(system_prompt, user_prompt, log_callback)
 
@@ -106,7 +121,7 @@ def generate_resume(
 def _call_gemini(system_prompt: str, user_prompt: str, log_callback) -> str:
     api_key = os.environ.get("GEMINI_API_KEY")
     client = genai.Client(api_key=api_key) if api_key else genai.Client()
-    models_to_try = ["gemini-2.5-flash-preview-05-20", "gemini-2.5-flash"]
+    models_to_try = ["gemini-3-flash-preview", "gemini-2.5-flash"]
     last_error = None
     for model_name in models_to_try:
         try:
