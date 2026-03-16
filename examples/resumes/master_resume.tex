@@ -1,0 +1,166 @@
+\documentclass[letterpaper,10.5pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\input{glyphtounicode}
+
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+\pdfgentounicode=1
+
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}
+}
+
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+%-------------------------------------------
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\begin{center}
+\vspace{-20pt}
+    \textbf{\Large \scshape Dharmik Patel} \\ \vspace{1pt}
+    \small +1-(585)-224-5490 $|$ \href{mailto:dp9208@g.rit.edu}{{\underline{dharmik7601@gmail.com}}} $|$
+    \href{http://linkedin.com/in/dharmik7601}{\underline{linkedin.com/in/dharmik7601}} $|$
+    \href{http://github.com/Dharmik7601}{\underline{github.com/Dharmik7601}} $|$
+    {Rochester, NY, USA}
+\vspace{-10pt}
+\end{center}
+%-----------EXPERIENCE-----------
+\section{Experience}
+  \resumeSubHeadingListStart
+      \resumeSubheading{Amazon Web Services (AWS) \textbar{} \footnotesize{Bedrock, Lambda, CDK, Java, TypeScript}}{May 2025 - Aug 2025}
+      {Software Development Engineer Intern}{East Palo Alto, CA, USA}
+       \resumeItemListStart
+       \vspace{-6pt}
+            \resumeItem{Engineered an internal LLM analyzer tool using AWS Bedrock for code reviews across 4 key areas (security, performance, style, test coverage), working within an agile framework.}
+            \resumeItem{Authored design document and deployment of a secure, serverless application using the AWS CDK (IaC), orchestrating 8+ core AWS services including Lambda, Bedrock, Step Functions, Opensearch, and DynamoDB.}
+            \resumeItem{Built a data ingestion pipeline to fetch and update over 5,000+ high-value internal data sources, enhancing the LLM's contextual awareness for impact analysis.}
+            \resumeItem{Secured the application's VPC and all services using precise IAM roles and granular Security Group (ingress/egress) rules to enforce least-privilege access.}
+    \resumeItemListEnd
+    \resumeSubheading
+      {Acute Informatics Pvt. Ltd. \textbar{} \footnotesize{MERN, REST APIs, JWT, AWS, MongoDB}}{Dec 2022 -- Apr 2023 }
+      {Software Developer Intern}{Ahmedabad, GJ, India}
+       \resumeItemListStart
+       \vspace{-6pt}
+            \resumeItem{Orchestrated a 5-service microservice application application using Docker and Kubernetes, authoring 10+ configuration files to automate scaling and updates, which reduced new environment setup time for the team by over 50\%.}
+            \resumeItem{Established an event-driven architecture using RabbitMQ to decouple a central API Gateway from backend services, successfully processing and delivering over 1,000+ automated email notifications daily.}
+            \resumeItem{Developed and containerized microservices, including a Flask authentication service using MySQL and a video processing worker that leveraged MongoDB GridFS for storing large media files.}
+    \resumeItemListEnd
+    \resumeSubheading
+      {WPServiceDesk Pvt. Ltd. \textbar{} \footnotesize{Flask, Kubernetes, Docker, RabbitMQ, CI/CD}}{May 2022 -- Sep 2022}
+      {Software Developer Intern}{Ahmedabad, GJ, India}
+      \resumeItemListStart
+       \vspace{-6pt}
+            \resumeItem{Built 2 full-stack MERN applications (Loan Origination \& Billing System) from scratch, delivering 15+ features including KYC document uploads, invoice generation, and admin/user panels.}
+            \resumeItem{Implemented and secured 40+ REST API endpoints for both applications using Node.js, Express, and JWT for authentication with bcrypt hashing.}
+            \resumeItem{Designed and managed 12+ MongoDB data models and integrated key AWS services for features like file storage (S3) and automated notifications (SES).}
+      \resumeItemListEnd
+  \resumeSubHeadingListEnd
+%-----------PROJECTS-----------
+\section{Projects}
+    \resumeSubHeadingListStart
+      \resumeProjectHeading
+          {\textbf{Distributed File System \textbar{} \footnotesize{C++, P2P, AES Encryption, CAS} }}{}
+          \resumeItemListStart
+            \resumeItem{Created a peer-to-peer distributed file system in C++, facilitating decentralized file storage and data retrieval across 10+ nodes.}
+            \resumeItem{Devised secure file storage and retrieval mechanisms, incorporating encryption (AES) and hashing (SHA-256, MD5) for data integrity and security.}
+            \resumeItem{Incorporated homomorphic content-addressable storage (CAS) across 10 nodes, achieving a 15\% reduction in data redundancy and improving data retrieval speeds.}
+            \resumeItem{Constructed a storage engine capable of efficient file operations, including secure storing, retrieval, deletion, and verification across a divided network.}
+          \resumeItemListEnd
+
+        \resumeProjectHeading
+          {\textbf{Go HTTP Server \textbar{} \footnotesize{Go, TCP, Concurrency, HTTP/1.1 Parser}}}{}
+          \resumeItemListStart
+            \resumeItem{Developed a custom HTTP server from scratch in Go, utilizing low-level TCP sockets to manage and process raw HTTP requests reducing the final binary size by an estimated 50\% by avoiding external runtime dependencies.}
+            \resumeItem{Devised a resilient request parser using a finite state machine to handle the sequential states of an HTTP request ensuring compliance with HTTP/1.1 protocol standards.}
+            \resumeItem{Leveraged Go's native concurrency model that allows the server to handle over 1,000+ connections, ensuring high availability and responsiveness under load.}
+            \resumeItem{Implemented multi-type content serving (video files, proxied requests) and chunked transfer encoding with SHA-256 checksums for data integrity.}
+          \resumeItemListEnd
+    \resumeSubHeadingListEnd
+%-------------------------------------------
+%-----------PROGRAMMING SKILLS-----------
+\section{Technical Skills}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+     \textbf{Languages}{: Python, C++, Go (GoLang), Java, TypeScript, JavaScript} \\
+     \textbf{DevOps, Cloud, \& Tools}{: Docker, Kubernetes, RabbitMQ, AWS, GCP, Azure, Terraform, CDK, Git, Postman} \\
+     \textbf{Databases \& Data Stores}{: MySQL, MongoDB, PostgreSQL, DynamoDB, Opensearch, S3} \\
+     \textbf{Backend Frameworks}{: Flask, Spring Boot, FastAPI, Django, Node.js, Express.js, Gin }
+    }}
+ \end{itemize}
+%-----------EDUCATION-----------
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {Rochester Institute of Technology}{Aug 2023 -- Dec 2025}
+      {MS in Computer Science \textbar{} \textbf{Advanced Algorithms, Artificial Intelligence, Big Data Analytics}}{Rochester, NY, USA}
+      \vspace{-5pt}
+    \resumeSubheading
+      {Indus University}{Aug 2019 -- Jun 2023}
+      {BE in Computer Science \textbar{} \textbf{Software Engineering, Cloud Computing, Distributed Systems}}{Ahmedabad, GJ, India}
+      \vspace{-5pt}
+  \resumeSubHeadingListEnd
+\end{document}

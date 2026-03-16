@@ -1,89 +1,81 @@
-# TailorTex 🎯📄
+# TailorTex
 
-TailorTex is a CLI-based Python tool designed to automatically rewrite and tailor a static LaTeX resume to perfectly match a specific job description. It uses Google's Gemini LLMs to reframe your experience, inject exact keywords, and intelligently rewrite bullet points, all while strictly preserving your precise LaTeX formatting and ensuring the output fits on exactly one page.
+Rewrites your LaTeX resume to match a job description — compiles to PDF via `pdflatex`.
+
+![Extension screenshot](docs/assets/Extension_Screenshot.png)
 
 ## Features
 
-- **Automated Tailoring**: Rewrites your experience and project descriptions to aggressively align with the provided Job Description.
-- **Strict Formatting Guardrails**: Only modifies whitelisted sections. It will never break your LaTeX structure, change your company names/job titles, or mess with vertical spacing.
-- **One-Page Guarantee**: Uses strict token constraints to guarantee a precise 1-page output.
-- **Local Compilation**: Automatically compiles the generated `.tex` file into a `.pdf` using your local installation of `pdflatex`, then cleans up the garbage `.aux` and `.log` files.
-- **Optional Prompt Injections**: Inject custom requirements (like "Don't change X job") or provide a bank of extra side-projects for the AI to pick from via simple CLI flags.
+- Rewrites bullet points and project descriptions to align with the job description
+- Only touches whitelisted sections — never breaks LaTeX structure, company names, or job titles
+- One-page output guaranteed
+- Compiles `.tex` → `.pdf` automatically and opens it
+- Multi-job queue with parallel Gemini + Claude runs
+- Two modes: Chrome extension (recommended) or CLI
 
 ## Requirements
 
-1. **Python 3.x**
-2. **Google GenAI SDK**: `pip install -r requirements.txt` (Installs `google-genai` and `python-dotenv`)
-3. **LaTeX Distribution**: You MUST have a working installation of LaTeX on your system (e.g., [MiKTeX](https://miktex.org/) on Windows or TeX Live on Mac/Linux) so that the `pdflatex` command is available in your system PATH.
-4. **Gemini API Key & Backup Location**: Create a `.env` file in the root directory and add:
-   ```env
-   GEMINI_API_KEY=your_api_key_here
-   BACKUP_LOCATION=C:\Path\To\Your\Backup\Folder
-   ```
+- Python 3.x — `pip install -r requirements.txt`
+- `pdflatex` on PATH — [MiKTeX](https://miktex.org/) (Windows) or TeX Live (Mac/Linux)
+- `.env` file in the project root:
+  ```env
+  GEMINI_API_KEY=your_api_key_here
+  BACKUP_LOCATION=C:\Path\To\Your\Backup\Folder
+  ```
 
-## Project Structure
+---
 
-```text
-TailorTex/
-├── main.py                    # The core generation script
-├── compile.py                 # Standalone script for manual PDF compilation
-├── backup.py                  # Script to backup generated PDFs and TeXs
-├── Makefile                   # Make commands for easy execution
-├── master_resume.tex          # YOUR base resume template (edit this!)
-├── job_description.txt        # The target job description for Gemini (make run)
-├── job_description-claude.txt # The target job description for Claude (make claude)
-├── output/                    # Generated PDFs and TeX files are saved here
-└── prompts/                   # Contains AI instructions:
-    ├── system_prompt.txt      # The core rules the AI must follow
-    ├── user_constraints.txt   # (Optional) Hard rules for specific generations
-    └── additional_projects.txt# (Optional) Project bank the AI can pull from
-```
+## Extension + Backend Setup
 
-## How to Use
+### 1. Start the backend
 
-### Step 1: Prepare your inputs
-1. Place your base resume in `master_resume.tex`. If you change the structure of this template, ensure you update the instructions in `prompts/system_prompt.txt` as they are specifically designed to follow it.
-2. Save the target Job Description inside `job_description.txt` (for Gemini) or `job_description-claude.txt` (for Claude). This separation allows you to generate two tailored resumes in parallel.
-
-### Step 2: Run the Pipeline (via Makefile)
-The easiest way to use the program is via the `Makefile`. 
-
-Open your terminal in the TailorTex directory and run:
 ```bash
-make run NAME=TargetCompany
-```
-*This will generate `TargetCompany_Resume.tex`, compile it to a `.pdf`, save it in the `output/` folder, and automatically open it for you.*
-
-**Using Enhancements (Constraints & Projects):**
-By default, the `Makefile` automatically sets `CONSTRAINTS=true` and `PROJECTS=true`. If you want to feed the AI your `prompts/user_constraints.txt` and `prompts/additional_projects.txt` files, simply use the command above! If you wish to *disable* them for a specific run, you can set them to false:
-```bash
-make run NAME=TargetCompany CONSTRAINTS=false PROJECTS=false
+cd backend
+uvicorn api.server:app --port 8001 --reload
 ```
 
-### Step 2.5: Run using Claude Code (Parallel Setup)
-If you configure Claude Code and want to test two different job descriptions concurrently, populate `job_description-claude.txt` and run:
-```bash
-make claude NAME=AlternativeCompany
-```
-This triggers the local Claude Code CLI (`claude`) to independently process `job_description-claude.txt` while leaving `job_description.txt` for Gemini. It will automatically compile into `output/AlternativeCompany_Resume.pdf`.
+### 2. Load the extension
 
-### Step 3: Manual Compilation
-If you manually tweak the generated `output/TargetCompany_Resume.tex` file and just want to re-compile it to a PDF without making another API call, use:
-```bash
-make compile TEX_FILE="output/TargetCompany_Resume.tex" NAME="Final_Draft"
-```
+1. Go to `chrome://extensions`
+2. Enable **Developer mode**
+3. **Load unpacked** → select `frontend/extension/`
+4. Click the extension icon — it opens as a side panel
 
-### Step 4: Backing Up Your Resumes
-If you want to save all the resumes you generated today into a secure, organized folder system, simply run:
-```bash
-make backup
-```
-This command reads the `BACKUP_LOCATION` from your `.env` file, extracts the target company name from your generated files (e.g., `TargetCompany`), creates a dedicated folder for that company, and copies both the `.pdf` and `.tex` files into it while automatically injecting today's date into the filename (e.g., `TargetCompany_9thMarch2026_Resume.pdf`).
+The extension submits jobs to the backend, streams logs in real time, and opens the PDF when done. Up to 5 jobs can be queued at once.
 
-## Customizing the Prompts
+### Generation methods
 
-If the AI is modifying things you don't want it to, or not being aggressive enough, you can tweak the files in the `prompts/` directory:
+| Method | What it uses |
+|--------|-------------|
+| `gemini` | Gemini API (requires `GEMINI_API_KEY`) |
+| `claudecli` | Local Claude Code CLI (`claude` must be on PATH) |
 
-- **`system_prompt.txt`**: This is the engine room. If you change your LaTeX template structure, you MUST update the "Content Modification Rules (Whitelist)" section in this file, or the AI will break your formatting.
-- **`user_constraints.txt`**: Use this to define one-off rules per application. 
-- **`additional_projects.txt`**: Paste projects you have done into this file. The AI will read through them and selectively swap them into your resume if it thinks they fit the job description better than the ones currently in `master_resume.tex`.
+---
+
+## CLI Setup
+
+For local/CLI usage without the extension, see [`local/README.md`](local/README.md).
+
+---
+
+## Resumes (`resumes/`)
+
+Put your `.tex` resume files here. Any filename works — the extension lists all `.tex` files in this directory as selectable options.
+
+Example: `resumes/master_resume.tex`
+
+The `examples/resumes/` directory has a sample template to start from.
+
+---
+
+## Prompts (`prompts/`)
+
+Three files, all optional but expected:
+
+| File | Purpose |
+|------|---------|
+| `system_prompt.txt` | Core AI rules — defines which LaTeX sections can be edited. Update this if you change your resume's structure. |
+| `user_constraints.txt` | Per-run hard rules (e.g., "don't change X job title"). Leave empty to skip. |
+| `additional_projects.txt` | A bank of extra projects the AI can swap in if they fit the JD better. Leave empty to skip. |
+
+The `examples/prompts/` directory has working examples of each.

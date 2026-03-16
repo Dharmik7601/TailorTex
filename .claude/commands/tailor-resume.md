@@ -9,7 +9,7 @@ Generate a tailored LaTeX resume. Output filename prefix: $ARGUMENTS
 Follow these steps exactly:
 
 1. Read `Master_Resume.tex` — split at `\begin{document}` and keep the preamble separate
-2. Read `job_description-claude.txt` for the target role
+2. Read `job_description.txt` for the target role
 3. Read `prompts/system_prompt.txt` for the modification rules and whitelist
 4. If `prompts/user_constraints.txt` is non-empty, apply those constraints too
 5. If `prompts/additional_projects.txt` is non-empty, use it as the project bank

@@ -1,15 +1,27 @@
-# Ignore the output directory contents, but allow the directory itself to be tracked via .gitkeep
+# Output directory — keep the folder tracked, not the contents
 output/*
 !output/.gitkeep
 
-# Ignore python environment files
+# Resumes directory — keep the folder tracked, not the contents
+resumes/*
+!resumes/.gitkeep
+
+# Prompts directory — keep the folder tracked, not the contents
+prompts/*
+!prompts/.gitkeep
+
+# Python
 __pycache__/
 *.pyc
 .env
+venv/
 
-# Ignore temporary compile outputs if generated in root directory
+# LaTeX build artifacts
 *.aux
 *.log
 *.out
 *.pdf
 temp_resume*.tex
+
+# Node
+node_modules/

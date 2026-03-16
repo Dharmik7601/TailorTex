@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "TailorTex 2.0",
+  "version": "2.0",
+  "description": "Generate tailored resumes from job postings using TailorTex",
+  "permissions": ["activeTab", "scripting", "storage", "sidePanel"],
+  "host_permissions": ["http://localhost:8001/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "popup.html"
+  },
+  "action": {
+    "default_title": "TailorTex 2.0"
+  }
+}
