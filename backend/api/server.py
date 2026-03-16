@@ -166,15 +166,18 @@ def _run_generation(job_id, master_resume_tex, job_description, company_name, us
                 use_projects=use_projects,
                 log_callback=log,
             )
+
+            # Auto-open the PDF with the system default viewer
+            if sys.platform == "win32":
+                os.startfile(pdf_path)
+            elif sys.platform == "darwin":
+                subprocess.run(["open", pdf_path])
+            else:
+                subprocess.run(["xdg-open", pdf_path])
+            
         jobs[job_id]["pdf_path"] = pdf_path
         jobs[job_id]["status"] = "completed"
-        # Auto-open the PDF with the system default viewer
-        if sys.platform == "win32":
-            os.startfile(pdf_path)
-        elif sys.platform == "darwin":
-            subprocess.run(["open", pdf_path])
-        else:
-            subprocess.run(["xdg-open", pdf_path])
+
     except Exception as e:
         for line in traceback.format_exc().splitlines():
             log(line)

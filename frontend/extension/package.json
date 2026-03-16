@@ -1,0 +1,17 @@
+{
+  "name": "tailortex-extension-tests",
+  "private": true,
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "jest-environment-jsdom": "^29.0.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "setupFiles": ["./jest.setup.js"],
+    "testMatch": ["**/tests/**/*.test.js"]
+  }
+}
