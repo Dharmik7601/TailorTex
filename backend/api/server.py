@@ -1,6 +1,9 @@
 import asyncio
+import datetime
+import json as _json
 import os
 import queue
+import re
 import subprocess
 import sys
 import threading
@@ -129,6 +132,8 @@ async def generate(
         "company_name": company_name,
         "resume_name": resume_name or (resume_file.filename if resume_file else ""),
         "method": method,
+        "ai_score": None,
+        "judging_done": False,
     }
 
     # Route to the appropriate method queue; unknown methods fall back to gemini
@@ -144,6 +149,90 @@ async def generate(
     })
 
     return GenerateResponse(job_id=job_id)
+
+
+def _run_judge(company_name: str, log) -> int | None:
+    """Run /judge-resume, write concerns file if score >= 50, return score only. Never raises."""
+    try:
+        log(f"[judge] Running AI judge for {company_name}...")
+        result = subprocess.run(
+            ["claude", "-p", f"/judge-resume {company_name}"],
+            cwd=BASE_DIR,
+            capture_output=True,
+            text=True,
+        )
+
+        stdout = result.stdout.strip()
+        stderr = result.stderr.strip()
+
+        if result.returncode != 0:
+            log(f"[judge] exited with code {result.returncode}: {stderr[:300]}")
+            return None
+
+        if not stdout:
+            log(f"[judge] empty stdout. stderr: {stderr[:300]}")
+            return None
+
+        log(f"[judge] raw output: {stdout[:200]}")
+
+        # Strip markdown fences if present (```json ... ```)
+        stdout = re.sub(r'^```(?:json)?\s*', '', stdout, flags=re.MULTILINE)
+        stdout = re.sub(r'```\s*$', '', stdout, flags=re.MULTILINE).strip()
+
+        # Try direct parse first; fall back to extracting the first {...} block
+        data = None
+        try:
+            data = _json.loads(stdout)
+        except _json.JSONDecodeError:
+            match = re.search(r'\{.*\}', stdout, re.DOTALL)
+            if match:
+                try:
+                    data = _json.loads(match.group())
+                except _json.JSONDecodeError:
+                    pass
+
+        if data is None:
+            log(f"[judge] could not parse JSON. raw: {stdout[:300]}")
+            return None
+
+        score = int(data["score"])
+        quotes = data.get("quotes", [])
+        log(f"[judge] score={score}/100")
+
+        if score >= 50 and quotes:
+            _write_concerns(company_name, score, quotes)
+            log(f"[judge] concerns written to output/resume_concerns.txt")
+
+        return score
+    except Exception:
+        for line in traceback.format_exc().splitlines():
+            log(f"[judge] {line}")
+        return None
+
+
+def _write_concerns(company_name: str, score: int, quotes: list) -> None:
+    """Append a structured concerns entry to output/resume_concerns.txt."""
+    output_dir = os.path.join(BASE_DIR, "output")
+    os.makedirs(output_dir, exist_ok=True)
+    concerns_path = os.path.join(output_dir, "resume_concerns.txt")
+
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    lines = [
+        "=" * 80,
+        f"Company : {company_name}",
+        f"Date    : {now}",
+        f"Score   : {score}/100",
+        "",
+        "Suspicious Quotes:",
+    ]
+    for i, q in enumerate(quotes, 1):
+        lines.append(f"  [{i}] \"{q.get('text', '')}\"")
+        lines.append(f"       Reason: {q.get('reason', '')}")
+    lines.append("=" * 80)
+    lines.append("")
+
+    with open(concerns_path, "a", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
 
 
 def _run_generation(job_id, master_resume_tex, job_description, company_name, use_constraints, use_projects, method="gemini"):
@@ -174,9 +263,16 @@ def _run_generation(job_id, master_resume_tex, job_description, company_name, us
                 subprocess.run(["open", pdf_path])
             else:
                 subprocess.run(["xdg-open", pdf_path])
-            
+
         jobs[job_id]["pdf_path"] = pdf_path
-        jobs[job_id]["status"] = "completed"
+        jobs[job_id]["judging_done"] = False
+        jobs[job_id]["status"] = "completed"  # PDF ready — unblock SSE immediately
+
+        def _judge_task():
+            jobs[job_id]["ai_score"] = _run_judge(company_name, log)
+            jobs[job_id]["judging_done"] = True
+
+        threading.Thread(target=_judge_task, daemon=True, name=f"judge-{job_id[:8]}").start()
 
     except Exception as e:
         for line in traceback.format_exc().splitlines():
@@ -236,6 +332,7 @@ async def status_stream(job_id: str):
 
     async def event_generator():
         sent_index = 0
+        completed_sent = False
         while True:
             job = jobs[job_id]
             current_log = job["log"]
@@ -245,8 +342,17 @@ async def status_stream(job_id: str):
                 yield f"data: {line}\n\n"
                 sent_index += 1
 
-            if job["status"] in ("completed", "error"):
-                yield f"event: {job['status']}\ndata: {job['status']}\n\n"
+            if not completed_sent and job["status"] == "completed":
+                yield f"event: completed\ndata: completed\n\n"
+                completed_sent = True
+
+            if completed_sent and job.get("judging_done"):
+                payload = _json.dumps({"score": job.get("ai_score")})
+                yield f"event: score\ndata: {payload}\n\n"
+                break
+
+            if not completed_sent and job["status"] == "error":
+                yield f"event: error\ndata: error\n\n"
                 break
 
             await asyncio.sleep(0.5)
@@ -263,6 +369,7 @@ def status_json(job_id: str):
         status=job["status"],
         log=job["log"],
         pdf_ready=job["status"] == "completed" and job["pdf_path"] is not None,
+        ai_score=job.get("ai_score"),
     )
 
 

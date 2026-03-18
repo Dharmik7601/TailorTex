@@ -264,6 +264,16 @@ button:disabled { background: #555; cursor: not-allowed; }
   color: #aaa;
 }
 
+.ai-score-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+.ai-score-low    { background: #1a3a1a; color: #4caf50; }
+.ai-score-medium { background: #3a2a1a; color: #ffc107; }
+.ai-score-high   { background: #3a1a1a; color: #f44336; }
+
 .job-open-btn {
   width: 100%;
   padding: 7px;

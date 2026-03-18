@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -9,6 +11,7 @@ class JobStatus(BaseModel):
     status: str  # "queued" | "running" | "completed" | "error"
     log: list[str]
     pdf_ready: bool
+    ai_score: Optional[int] = None
 
 
 class QueueItem(BaseModel):

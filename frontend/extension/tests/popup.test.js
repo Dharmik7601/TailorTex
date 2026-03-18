@@ -185,7 +185,7 @@ describe('Issue 2 — storage write frequency', () => {
     expect(popup.logCache.has('job-1')).toBe(false);
   });
 
-  test('sseMap entry is removed after job completes', async () => {
+  test('sseMap entry stays open after completed, removed only after score event', async () => {
     popup.attachSSE('job-1');
     expect(popup.sseMap.has('job-1')).toBe(true);
 
@@ -193,6 +193,34 @@ describe('Issue 2 — storage write frequency', () => {
     es._fireNamedEvent('completed');
     await Promise.resolve();
 
+    // Still open — waiting for score
+    expect(popup.sseMap.has('job-1')).toBe(true);
+
+    es._fireNamedEvent('score', JSON.stringify({ score: 42 }));
+    await Promise.resolve();
+
+    expect(popup.sseMap.has('job-1')).toBe(false);
+  });
+
+  test('score event writes ai_score to storage and closes SSE', async () => {
+    popup.attachSSE('job-1');
+    const es = MockEventSource.instances[0];
+
+    es._fireNamedEvent('completed');
+    await Promise.resolve();
+
+    // One write for completed status
+    expect(storageMock.set).toHaveBeenCalledTimes(1);
+
+    es._fireNamedEvent('score', JSON.stringify({ score: 57 }));
+    await Promise.resolve();
+
+    // Second write for score
+    expect(storageMock.set).toHaveBeenCalledTimes(2);
+
+    const writtenJobs = storageMock.set.mock.calls[1][0]['ttjobs'];
+    const writtenJob = writtenJobs.find(j => j.job_id === 'job-1');
+    expect(writtenJob.ai_score).toBe(57);
     expect(popup.sseMap.has('job-1')).toBe(false);
   });
 });
