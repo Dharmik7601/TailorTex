@@ -16,8 +16,9 @@ from fastapi import FastAPI, Form, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 
-from api.schemas import GenerateResponse, JobStatus, QueueItem, QueueResponse
+from api.schemas import GenerateResponse, JobStatus, QueueItem, QueueResponse, ResumeDetails
 from core.generator import generate_resume
+from core.tex_parser import parse_resume_tex
 
 load_dotenv()
 
@@ -388,6 +389,30 @@ def download_pdf(job_id: str):
         media_type="application/pdf",
         filename=os.path.basename(job["pdf_path"]),
     )
+
+
+@app.get("/details/{job_id}", response_model=ResumeDetails)
+def get_details(job_id: str, company: Optional[str] = None):
+    """Return parsed Experience and Projects data from the generated .tex file."""
+    if job_id in jobs:
+        job = jobs[job_id]
+        if not job.get("pdf_path"):
+            raise HTTPException(status_code=404, detail="No output file for this job")
+        tex_path = job["pdf_path"].replace(".pdf", ".tex")
+    elif company:
+        tex_path = os.path.join(BASE_DIR, "output", f"{company}_Resume.tex")
+    else:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if not os.path.exists(tex_path):
+        raise HTTPException(status_code=404, detail=f"TeX file not found: {tex_path}")
+
+    try:
+        with open(tex_path, "r", encoding="utf-8") as f:
+            tex_content = f.read()
+        return parse_resume_tex(tex_content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Parse error: {e}")
 
 
 @app.get("/open/{job_id}")

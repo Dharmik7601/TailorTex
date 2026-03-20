@@ -210,7 +210,7 @@ function createJobCard(job) {
     <div class="job-card-body">
       <button class="job-log-toggle">Logs ▸</button>
       <pre class="job-card-logs" style="display:none"></pre>
-      ${job.status === 'completed' ? `<button class="job-open-btn">Open PDF</button>` : ''}
+      ${job.status === 'completed' ? `<div class="job-actions"><button class="job-open-btn">Open PDF</button><button class="job-details-btn">View Details</button></div>` : ''}
     </div>
   `;
 
@@ -232,7 +232,7 @@ function createJobCard(job) {
     e.target.textContent = open ? 'Logs ▸' : 'Logs ▾';
   });
 
-  // Open PDF button (if already completed at creation time)
+  // Open PDF + View Details buttons (if already completed at creation time)
   if (job.status === 'completed') {
     card.querySelector('.job-open-btn').addEventListener('click', async () => {
       try {
@@ -246,6 +246,7 @@ function createJobCard(job) {
         alert('Could not open PDF: ' + e.message);
       }
     });
+    card.querySelector('.job-details-btn').addEventListener('click', () => showDetails(job));
   }
 
   // Populate log from storage if available (e.g. panel reopen after completion)
@@ -281,8 +282,11 @@ function patchJobCard(card, job) {
     if (meta && discardBtn) meta.insertBefore(badge, discardBtn);
   }
 
-  // Add Open PDF button if job just completed and button not yet present
-  if (job.status === 'completed' && !card.querySelector('.job-open-btn')) {
+  // Add Open PDF + View Details buttons if job just completed and not yet present
+  if (job.status === 'completed' && !card.querySelector('.job-actions')) {
+    const actions = document.createElement('div');
+    actions.className = 'job-actions';
+
     const btn = document.createElement('button');
     btn.className = 'job-open-btn';
     btn.textContent = 'Open PDF';
@@ -298,8 +302,16 @@ function patchJobCard(card, job) {
         alert('Could not open PDF: ' + e.message);
       }
     });
+
+    const detBtn = document.createElement('button');
+    detBtn.className = 'job-details-btn';
+    detBtn.textContent = 'View Details';
+    detBtn.addEventListener('click', () => showDetails(job));
+
+    actions.appendChild(btn);
+    actions.appendChild(detBtn);
     const body = card.querySelector('.job-card-body');
-    if (body) body.appendChild(btn);
+    if (body) body.appendChild(actions);
   }
 
   // Update log text only if no live SSE in this tab (e.g. cross-tab sync update)
@@ -416,6 +428,107 @@ function attachSSE(job_id) {
   };
 }
 
+// ── Details view ──────────────────────────────────────────────────────────────
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text);
+  const toast = $('copy-toast');
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 1500);
+}
+
+async function showDetails(job) {
+  $('form-section').style.display = 'none';
+  $('queue-section').style.display = 'none';
+  $('details-section').style.display = 'block';
+  $('details-company-name').textContent = job.company;
+  $('details-content').innerHTML = '<div style="color:#888;font-size:12px;">Loading...</div>';
+
+  try {
+    const url = `${API}/details/${job.job_id}?company=${encodeURIComponent(job.company)}`;
+    const r = await fetch(url);
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      $('details-content').innerHTML = `<div style="color:#f44336;font-size:12px;">Error: ${escHtml(d.detail || r.statusText)}</div>`;
+      return;
+    }
+    const data = await r.json();
+    renderDetails(data);
+  } catch (e) {
+    $('details-content').innerHTML = `<div style="color:#f44336;font-size:12px;">Failed to load: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function renderDetails(data) {
+  const container = $('details-content');
+  container.innerHTML = '';
+
+  function makeField(label, value) {
+    const div = document.createElement('div');
+    div.className = 'details-field';
+    div.innerHTML = `<div class="details-field-label">${escHtml(label)}</div><div class="details-field-value">${escHtml(value)}</div>`;
+    div.addEventListener('click', () => copyToClipboard(value));
+    return div;
+  }
+
+  function appendBullets(entry, bullets) {
+    const allText = bullets.map(b => '• ' + b).join('\n');
+    const group = document.createElement('div');
+    group.className = 'details-bullets-group';
+    for (const b of bullets) {
+      const div = document.createElement('div');
+      div.className = 'details-bullet';
+      div.textContent = '• ' + b;
+      div.addEventListener('click', () => copyToClipboard(allText));
+      group.appendChild(div);
+    }
+    entry.appendChild(group);
+  }
+
+  // Experience
+  if (data.experience && data.experience.length) {
+    const title = document.createElement('div');
+    title.className = 'details-section-title';
+    title.textContent = 'EXPERIENCE';
+    container.appendChild(title);
+
+    for (const exp of data.experience) {
+      const entry = document.createElement('div');
+      entry.className = 'details-entry';
+      entry.appendChild(makeField('Company', exp.company));
+      entry.appendChild(makeField('Role', exp.role));
+      if (exp.tech_stack) entry.appendChild(makeField('Tech Stack', exp.tech_stack));
+      entry.appendChild(makeField('Dates', exp.dates));
+      entry.appendChild(makeField('Location', exp.location));
+      appendBullets(entry, exp.bullets);
+      container.appendChild(entry);
+    }
+  }
+
+  // Projects
+  if (data.projects && data.projects.length) {
+    const title = document.createElement('div');
+    title.className = 'details-section-title';
+    title.textContent = 'PROJECTS';
+    container.appendChild(title);
+
+    for (const proj of data.projects) {
+      const entry = document.createElement('div');
+      entry.className = 'details-entry';
+      entry.appendChild(makeField('Project', proj.name));
+      if (proj.tech_stack) entry.appendChild(makeField('Tech Stack', proj.tech_stack));
+      appendBullets(entry, proj.bullets);
+      container.appendChild(entry);
+    }
+  }
+}
+
+function hideDetails() {
+  $('details-section').style.display = 'none';
+  $('details-content').innerHTML = '';
+  $('form-section').style.display = '';
+  $('queue-section').style.display = '';
+}
+
 // ── Submit generation job ─────────────────────────────────────────────────────
 async function generate() {
   const company    = $('company-name').value.trim();
@@ -476,6 +589,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   $('generate-btn').disabled = !online;
   $('generate-btn').addEventListener('click', generate);
+  $('details-back-btn').addEventListener('click', hideDetails);
 
   // Initial render from storage
   const jobs = await getJobs();

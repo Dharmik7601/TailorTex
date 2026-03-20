@@ -274,9 +274,16 @@ button:disabled { background: #555; cursor: not-allowed; }
 .ai-score-medium { background: #3a2a1a; color: #ffc107; }
 .ai-score-high   { background: #3a1a1a; color: #f44336; }
 
-.job-open-btn {
-  width: 100%;
-  padding: 7px;
+.job-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.job-open-btn,
+.job-details-btn {
+  width: auto;
+  padding: 5px 12px;
   background: #1a3a1a;
   color: #4caf50;
   border: 1px solid #2a5a2a;
@@ -285,6 +292,118 @@ button:disabled { background: #555; cursor: not-allowed; }
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
-  margin-top: 4px;
 }
 .job-open-btn:hover { background: #2a5a2a; }
+.job-details-btn {
+  background: #1a2a4a;
+  color: #5599ff;
+  border-color: #2a4a7a;
+}
+.job-details-btn:hover { background: #2a4a7a; }
+
+/* Details section */
+#details-section {
+  padding: 0 14px;
+}
+
+#details-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+#details-back-btn {
+  width: auto;
+  padding: 4px 10px;
+  background: #0f1a2e;
+  color: #aaa;
+  font-size: 12px;
+  border: 1px solid #0f3460;
+  border-radius: 4px;
+  cursor: pointer;
+}
+#details-back-btn:hover { color: #fff; background: #16213e; }
+
+#details-company-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #e94560;
+}
+
+.details-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin: 12px 0 6px 0;
+}
+
+.details-entry {
+  background: #16213e;
+  border: 1px solid #0f3460;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+}
+
+.details-field {
+  padding: 4px 6px;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.details-field:hover {
+  background: rgba(233, 69, 96, 0.08);
+  border-left-color: #e94560;
+}
+
+.details-field-label {
+  font-size: 9px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.details-field-value {
+  font-size: 12px;
+  color: #e0e0e0;
+  line-height: 1.4;
+}
+
+.details-bullets-group {
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.15s;
+}
+.details-bullets-group:hover {
+  background: rgba(233, 69, 96, 0.08);
+}
+
+.details-bullet {
+  padding: 3px 6px;
+  font-size: 12px;
+  color: #ccc;
+  line-height: 1.4;
+}
+
+/* Copy toast */
+.copy-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2a5a2a;
+  color: #4caf50;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 9999;
+  pointer-events: none;
+}
+.copy-toast.show { opacity: 1; }
