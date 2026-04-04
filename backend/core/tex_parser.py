@@ -209,3 +209,98 @@ def parse_resume_tex(tex_content: str) -> dict:
         "experience": _parse_experience(experience_section),
         "projects": _parse_projects(projects_section),
     }
+
+
+def _parse_skills(section_text: str) -> list[str]:
+    """Extract skill category lines from the Technical Skills section.
+
+    Handles the \textbf{Category}{: items} \\\\ pattern used in the template.
+    Returns one string per category, e.g. "Languages: Python, C++, Go".
+    """
+    lines = []
+    for m in re.finditer(r"\\textbf\{([^}]+)\}\{([^}]+)\}", section_text):
+        category = m.group(1).strip()
+        items = m.group(2).strip().lstrip(":").strip()
+        # clean_latex handles \& etc. inside items
+        items = clean_latex(items)
+        if category and items:
+            lines.append(f"{category}: {items}")
+    return lines
+
+
+def _parse_education(section_text: str) -> list[str]:
+    """Extract education entries as plain-text lines."""
+    lines = []
+    positions = _find_all_command(section_text, "resumeSubheading")
+    for pos in positions:
+        after_cmd = pos + len("\\resumeSubheading")
+        args, _ = _extract_args(section_text, after_cmd, 4)
+        if len(args) < 3:
+            continue
+        institution = clean_latex(args[0])
+        dates = clean_latex(args[1])
+        degree_raw = args[2]
+        # Degree field may contain \textbar{} separating degree from coursework
+        if r"\textbar{}" in degree_raw or r"\textbar" in degree_raw:
+            degree_raw = degree_raw.replace(r"\textbar{}", " | ").replace(r"\textbar", " | ")
+        degree = clean_latex(degree_raw)
+        lines.append(f"{institution} ({dates}): {degree}")
+    return lines
+
+
+def format_resume_for_eval(tex_content: str) -> str:
+    """Return a clean plain-text representation of the resume for LLM evaluation.
+
+    Extracts Technical Skills, Experience, Projects, and Education from the
+    LaTeX source. No binary artifacts, no LaTeX commands in the output.
+    """
+    if not tex_content or not tex_content.strip():
+        return ""
+
+    parts: list[str] = []
+
+    # Experience
+    exp_raw = _extract_section(tex_content, "Experience")
+    exp_entries = _parse_experience(exp_raw) if exp_raw else []
+    if exp_entries:
+        parts.append("=== EXPERIENCE ===")
+        for e in exp_entries:
+            parts.append(f"{e['company']} | {e['role']}")
+            if e.get("tech_stack"):
+                parts.append(f"Tech Stack: {e['tech_stack']}")
+            for b in e["bullets"]:
+                parts.append(f"- {b}")
+            parts.append("")
+
+    # Projects
+    proj_raw = _extract_section(tex_content, "Projects")
+    proj_entries = _parse_projects(proj_raw) if proj_raw else []
+    if proj_entries:
+        parts.append("=== PROJECTS ===")
+        for p in proj_entries:
+            parts.append(f"{p['name']}")
+            if p.get("tech_stack"):
+                parts.append(f"Tech Stack: {p['tech_stack']}")
+            for b in p["bullets"]:
+                parts.append(f"- {b}")
+            parts.append("")
+
+    # Education
+    edu_raw = _extract_section(tex_content, "Education")
+    edu_lines = _parse_education(edu_raw) if edu_raw else []
+    if edu_lines:
+        parts.append("=== EDUCATION ===")
+        parts.extend(edu_lines)
+        parts.append("")
+
+    # Technical Skills — placed last so evaluator can cross-reference bullets above
+    skills_raw = _extract_section(tex_content, "Technical Skills")
+    if not skills_raw:
+        skills_raw = _extract_section(tex_content, "Skills")
+    skill_lines = _parse_skills(skills_raw) if skills_raw else []
+    if skill_lines:
+        parts.append("=== TECHNICAL SKILLS ===")
+        parts.extend(skill_lines)
+        parts.append("")
+
+    return "\n".join(parts).strip()

@@ -1,26 +1,12 @@
 <constraints>
-- Retain the "Amazon Web Services" experience entry's bullet points and metadata exactly as provided — do NOT modify any \resumeItem{...} content in the AWS section
-- The \footnotesize{...} tech stack sidebar for the AWS entry MAY be updated to include relevant JD keywords if they are logically consistent with the existing AWS work described in the bullets
-- Confine all generated or modified experience bullet points (excluding the AWS section) strictly to core software development tasks; anchor the history to traditional software engineering and omit AI or AI-related tools entirely
-- Design any generated or fabricated projects so they can be fully recreated and run locally on an individual developer's machine without cloud dependencies
 </constraints>
 
 <realism_rules>
-These rules apply globally to every bullet point and metric across all sections unless scoped otherwise.
 
 <hardware>
-SCOPE: Project sections only — internship experience sections may reference any hardware or cloud infrastructure plausibly available in that role.
-- Never reference A100, H100, V100, or any data-center GPU in project sections — the available hardware for personal projects is a consumer laptop with an NVIDIA RTX 4060 GPU
-- All GPU-related claims in project sections (memory, throughput, latency, speedup) must be achievable and measurable on an RTX 4060
-- Do not reference multi-GPU or multi-machine GPU clusters in project sections — single-node, single-GPU constraints apply
 </hardware>
 
 <metrics>
-SCOPE: All sections globally.
-- Never use uptime percentages (e.g., 99.9%, 99.99%) for any local project or intern-scale system — these imply sustained production operation that cannot be verified
-- Never use "100%" for any accuracy, retrieval, or reliability claim — no real system achieves 100% and the claim immediately signals fabrication to a technical interviewer
-- Avoid implausibly large data volume claims for personal projects unless the original resume already states them
-- All percentage improvements (latency reduction, speedup, memory savings) must be modest and explainable — prefer ranges in the 20-40% range over suspiciously large numbers like 75% or 80% that suggest estimation rather than actual measurement
-- Every metric must have an implied measurement method — if a number cannot be explained by saying "I measured it using X tool or benchmark", do not include it
 </metrics>
+
 </realism_rules>

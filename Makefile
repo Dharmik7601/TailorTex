@@ -56,6 +56,7 @@ compile:
 clean:
 	@echo "Cleaning up files in $(OUTPUT_DIR) and emptying job description files..."
 	-@if exist "$(OUTPUT_DIR)" del /q "$(OUTPUT_DIR)\*.pdf" "$(OUTPUT_DIR)\*.tex" "$(OUTPUT_DIR)\*.aux" "$(OUTPUT_DIR)\*.log" "$(OUTPUT_DIR)\*.out"
+	-@if exist "$(OUTPUT_DIR)\extras" del /q "$(OUTPUT_DIR)\extras\*.*"
 	-@if exist "$(JD_FILE)" type nul > "$(JD_FILE)"
 	@echo "Cleanup complete."
 

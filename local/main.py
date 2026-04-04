@@ -28,7 +28,7 @@ def main():
         print(f"Error: Job description file not found at {jd_path}")
         sys.exit(1)
 
-    master_resume_path = "Master_Resume.tex"
+    master_resume_path = "resumes/master_Resume.tex"
     if not os.path.exists(master_resume_path):
         print(f"Error: {master_resume_path} not found in the current directory.")
         sys.exit(1)
@@ -93,6 +93,8 @@ def main():
                     <task>
                     Using the rules in the system prompt, rewrite the resume body above to match this job description. Return only the raw LaTeX from \\begin{{document}} to \\end{{document}}.
                     </task>"""
+    user_prompt = user_prompt + "\n\n" + system_prompt
+    # print(user_prompt)
 
     print("Sending prompt to Gemini API...")
 
@@ -104,7 +106,8 @@ def main():
     else:
         client = genai.Client(api_key=api_key)
 
-    models_to_try = ['gemini-3-flash-preview', 'gemini-2.5-flash']
+    # models_to_try = ['gemini-3-flash-preview', 'gemini-2.5-flash']
+    models_to_try = ['gemma-4-31b-it']
     llm_output = None
     last_error = None
 
@@ -114,10 +117,10 @@ def main():
             response = client.models.generate_content(
                 model=model_name,
                 contents=user_prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_prompt,
-                    temperature=0.2,
-                )
+                # config=types.GenerateContentConfig(
+                #     system_instruction=system_prompt,
+                #     temperature=0.2,
+                # )
             )
             llm_output = response.text
             print(f"Successfully generated content using {model_name}.")

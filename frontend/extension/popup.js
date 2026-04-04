@@ -144,13 +144,6 @@ async function removeJob(job_id) {
   await saveJobs(jobs.filter(j => j.job_id !== job_id));
 }
 
-// ── AI score badge helper ─────────────────────────────────────────────────────
-function aiScoreClass(score) {
-  if (score < 40) return 'ai-score-low';
-  if (score < 65) return 'ai-score-medium';
-  return 'ai-score-high';
-}
-
 // ── HTML escaping ─────────────────────────────────────────────────────────────
 function escHtml(str) {
   return String(str)
@@ -190,10 +183,6 @@ function createJobCard(job) {
   const methodLabel = job.method === 'claudecli' ? 'Claude' : 'Gemini';
   const methodClass = job.method === 'claudecli' ? 'badge-claude' : 'badge-gemini';
 
-  const scoreBadge = job.ai_score != null
-    ? `<span class="ai-score-badge ${aiScoreClass(job.ai_score)}">${job.ai_score}/100</span>`
-    : '';
-
   card.innerHTML = `
     <div class="job-card-header">
       <div class="job-card-info">
@@ -203,7 +192,6 @@ function createJobCard(job) {
       <div class="job-card-meta">
         <span class="method-badge ${methodClass}">${methodLabel}</span>
         <span class="status-badge ${statusClass}">${job.status}</span>
-        ${scoreBadge}
         <button class="job-discard-btn" title="Discard">×</button>
       </div>
     </div>
@@ -270,16 +258,6 @@ function patchJobCard(card, job) {
       error: 'status-error',
     }[job.status] || '';
     statusBadge.className = `status-badge ${statusClass}`;
-  }
-
-  // Add AI score badge if job just completed and badge not yet present
-  if (job.status === 'completed' && job.ai_score != null && !card.querySelector('.ai-score-badge')) {
-    const badge = document.createElement('span');
-    badge.className = `ai-score-badge ${aiScoreClass(job.ai_score)}`;
-    badge.textContent = `${job.ai_score}/100`;
-    const discardBtn = card.querySelector('.job-discard-btn');
-    const meta = card.querySelector('.job-card-meta');
-    if (meta && discardBtn) meta.insertBefore(badge, discardBtn);
   }
 
   // Add Open PDF + View Details buttons if job just completed and not yet present
@@ -366,6 +344,11 @@ function attachSSE(job_id) {
   // Initialize in-memory log buffer for this session
   logCache.set(job_id, []);
 
+  // Synchronous flag — set the moment 'completed' fires, before any await.
+  // onerror checks this to avoid overwriting a completed job as 'error' when
+  // the server closes the stream before the async storage write has committed.
+  let completedReceived = false;
+
   const es = new EventSource(`${API}/status/${job_id}`);
   sseMap.set(job_id, es);
 
@@ -380,23 +363,14 @@ function attachSSE(job_id) {
     }
   };
 
-  // PDF ready — update UI immediately, keep SSE open waiting for score
+  // PDF ready — update UI and close SSE
   es.addEventListener('completed', async () => {
+    completedReceived = true;  // set synchronously before any await
+    es.close();
+    sseMap.delete(job_id);
     const finalLog = logCache.get(job_id) || [];
     logCache.delete(job_id);
     await updateJobStatus(job_id, { status: 'completed', pdf_ready: true, log: finalLog });
-  });
-
-  // Score arrives separately after judge finishes
-  es.addEventListener('score', async (e) => {
-    es.close();
-    sseMap.delete(job_id);
-    let aiScore = null;
-    try {
-      const data = JSON.parse(e.data);
-      aiScore = data.score ?? null;
-    } catch (_) {}
-    await updateJobStatus(job_id, { ai_score: aiScore });
   });
 
   es.addEventListener('error', async ev => {
@@ -410,21 +384,24 @@ function attachSSE(job_id) {
   });
 
   es.onerror = async () => {
-    const jobs = await getJobs();
-    const job = jobs.find(j => j.job_id === job_id);
-    // If generation hasn't completed yet, treat as error
-    if (job && job.status !== 'completed') {
-      es.close();
-      sseMap.delete(job_id);
-      const finalLog = logCache.get(job_id) || [];
-      logCache.delete(job_id);
-      await updateJobStatus(job_id, { status: 'error', log: finalLog });
-    } else {
-      // Connection dropped during scoring phase — close gracefully, score stays null
+    // If the completed handler already closed the connection, this is a no-op.
+    if (!sseMap.has(job_id)) return;
+
+    // 'completed' was received — the server closed the stream normally.
+    // Don't treat this as an error.
+    if (completedReceived) {
       es.close();
       sseMap.delete(job_id);
       logCache.delete(job_id);
+      return;
     }
+
+    // Genuine connection failure before completion — mark as error.
+    es.close();
+    sseMap.delete(job_id);
+    const finalLog = logCache.get(job_id) || [];
+    logCache.delete(job_id);
+    await updateJobStatus(job_id, { status: 'error', log: finalLog });
   };
 }
 
@@ -607,6 +584,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 if (typeof module !== 'undefined') {
   module.exports = {
     renderQueue, attachSSE, createJobCard, patchJobCard, updateSlotCounter,
-    getJobs, saveJobs, escHtml, logCache, sseMap, aiScoreClass,
+    getJobs, saveJobs, escHtml, logCache, sseMap,
   };
 }

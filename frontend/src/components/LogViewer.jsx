@@ -7,7 +7,8 @@ export default function LogViewer({ logs, status }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [logs])
 
-  if (logs.length === 0) return null
+  // Don't render anything in the idle state (before a job has started)
+  if (status === 'idle') return null
 
   return (
     <div className="log-viewer">
@@ -16,12 +17,14 @@ export default function LogViewer({ logs, status }) {
         {status === 'completed' && '✅ Completed'}
         {status === 'error' && '❌ Error'}
       </div>
-      <pre className="log-output">
-        {logs.map((line, i) => (
-          <div key={i}>{line}</div>
-        ))}
-        <div ref={bottomRef} />
-      </pre>
+      {logs.length > 0 && (
+        <pre className="log-output">
+          {logs.map((line, i) => (
+            <div key={i}>{line}</div>
+          ))}
+          <div ref={bottomRef} />
+        </pre>
+      )}
     </div>
   )
 }

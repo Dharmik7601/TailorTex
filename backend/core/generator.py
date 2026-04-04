@@ -121,25 +121,38 @@ def generate_resume(
 def _call_gemini(system_prompt: str, user_prompt: str, log_callback) -> str:
     api_key = os.environ.get("GEMINI_API_KEY")
     client = genai.Client(api_key=api_key) if api_key else genai.Client()
-    models_to_try = ["gemini-3-flash-preview", "gemini-2.5-flash"]
+    # Gemma first (priority), Gemini as fallback
+    models_to_try = ["gemma-4-31b-it", "gemini-3-flash-preview"]
     last_error = None
     for model_name in models_to_try:
         try:
             log_callback(f"Trying model: {model_name}...")
-            response = client.models.generate_content(
-                model=model_name,
-                contents=user_prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_prompt,
-                    temperature=0.2,
-                ),
-            )
+            if model_name.startswith("gemma"):
+                # Gemma does not support system_instruction — merge it into user content
+                merged_content = f"<system>\n{system_prompt}\n</system>\n\n{user_prompt}"
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=merged_content,
+                    # config=types.GenerateContentConfig(
+                    #     temperature=0.2,
+                    # ),
+                )
+            else:
+                # Gemini supports system_instruction natively
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=user_prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_prompt,
+                        temperature=0.2,
+                    ),
+                )
             log_callback(f"Successfully generated content using {model_name}.")
             return response.text
         except Exception as e:
             last_error = e
             log_callback(f"Model {model_name} failed: {e}. Attempting fallback...")
-    raise RuntimeError(f"All Gemini models failed. Last error: {last_error}")
+    raise RuntimeError(f"All models failed. Last error: {last_error}")
 
 
 def _extract_latex(text: str) -> str:

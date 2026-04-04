@@ -20,22 +20,40 @@ TailorTex/
 │   │   ├── server.py          # FastAPI app — all endpoints
 │   │   └── schemas.py         # Pydantic models
 │   └── core/
-│       ├── generator.py       # Gemini API call + pdflatex compile
-│       └── compiler.py        # Standalone LaTeX compiler
+│       ├── generator.py       # Gemini API call (tries gemma-4-31b-it, falls back to gemini-3-flash-preview)
+│       ├── compiler.py        # Standalone LaTeX compiler
+│       └── tex_parser.py      # Parse generated .tex into structured data + plain-text for eval
 ├── frontend/
-│   └── extension/             # Chrome MV3 side-panel extension
-│       ├── manifest.json
-│       ├── background.js      # Opens side panel on action click
-│       ├── popup.html         # Always-visible form + queue panel
-│       ├── popup.js           # All extension logic
-│       └── popup.css          # Dark theme styles
+│   ├── extension/             # Chrome MV3 side-panel extension
+│   │   ├── manifest.json
+│   │   ├── background.js      # Opens side panel on action click
+│   │   ├── popup.html         # Always-visible form + queue panel
+│   │   ├── popup.js           # All extension logic
+│   │   └── popup.css          # Dark theme styles
+│   └── src/                   # React frontend (Vite) — run via `make serve-ui`
+│       ├── App.jsx
+│       ├── main.jsx
+│       └── components/
+│           ├── LogViewer.jsx
+│           ├── ResumeForm.jsx
+│           └── DownloadButton.jsx
+├── local/
+│   ├── main.py                # CLI entry point (Gemini API, argparse)
+│   ├── compile.py             # Standalone LaTeX compiler script
+│   └── backup.py              # Backup output PDFs to BACKUP_LOCATION
 ├── prompts/
 │   ├── system_prompt.txt      # Core LLM rules (whitelist of editable sections)
-│   ├── user_constraints.txt   # Per-run hard constraints
-│   └── additional_projects.txt# Project bank for swapping into resume
+│   ├── user_constraints.txt   # Per-run hard constraints (immutable by optimizer)
+│   ├── additional_projects.txt# Project bank for swapping into resume
+│   ├── prompt_summary.txt     # Compressed rule reference used by the evaluator
+│   ├── evaluator_prompt.txt   # Evaluator role, scoring categories, output schema
+│   ├── optimizer_prompt.txt   # Optimizer rules, decision constraints, output schema
+│   ├── daily_feedback.json    # Accumulated evaluation results (cleared after /optimize-prompt)
+│   └── change_tracker.json    # Scoring ledger and rule history for the optimizer
 ├── resumes/                   # Base .tex resume files selectable in the extension
-├── output/                    # Generated .tex and .pdf files (gitignored)
-├── master_resume.tex          # Root-level master resume (legacy CLI path)
+├── output/
+│   ├── *.tex / *.pdf          # Generated resumes (gitignored)
+│   └── extras/                # Per-job evaluation artifacts (plain-text resume + JD snapshot)
 ├── job_description.txt        # Used by CLI and Claude Code slash command
 ├── Makefile
 └── requirements.txt
@@ -65,17 +83,24 @@ After any code change to the extension files, click the **reload icon** on the e
 
 ---
 
-## CLI Commands (legacy)
+## CLI Commands
 
 ```bash
 pip install -r requirements.txt
 
-make run NAME=TargetCompany                          # generate + compile
+make run NAME=TargetCompany                          # generate + compile (Gemini)
 make run NAME=TargetCompany CONSTRAINTS=false PROJECTS=false
+make claude NAME=TargetCompany                       # generate via Claude Code CLI
 make compile NAME=TargetCompany                      # re-compile existing .tex
 make backup                                          # backup output/ to BACKUP_LOCATION
-make clean                                           # clear output/
+make clean                                           # clear output/ and output/extras/
+make setup                                           # create venv + install requirements
+make serve-api                                       # run FastAPI backend (port 8001)
+make serve-ui                                        # run React frontend (Vite)
+make dev                                             # run both servers in parallel
 ```
+
+The `make run` command calls `local/main.py` directly with argparse flags (`--jd`, `--output`, `--constraints`, `--projects`).
 
 ---
 
@@ -103,6 +128,7 @@ BACKUP_LOCATION=C:\Path\To\Your\Backup\Folder
 | GET | `/status/{job_id}/json` | Snapshot status (non-streaming) |
 | GET | `/open/{job_id}?company=X` | Open the PDF with the system default viewer |
 | GET | `/download/{job_id}` | Serve the PDF as a file download |
+| GET | `/details/{job_id}?company=X` | Return parsed Experience and Projects from the generated .tex |
 
 ### POST `/generate` form fields
 | Field | Type | Description |
@@ -195,27 +221,49 @@ Each active job gets an `EventSource` connection to `/status/{job_id}`. Connecti
 
 ---
 
-## How to Generate a Resume with Claude Code (slash command)
+## Claude Code Slash Commands
 
-```
-/tailor-resume <NAME>
-```
+### `/tailor-resume <NAME>`
+Generates `output/<NAME>_Resume.tex` from `job_description.txt` following all rules in `prompts/system_prompt.txt`. **The command only writes the `.tex` file** — the backend handles compilation, cleanup, and opening the PDF.
 
-This reads `job_description.txt` and generates `output/<NAME>_Resume.tex` + PDF following all rules in `prompts/system_prompt.txt`.
+Steps:
+1. Read `resumes/master_resume.tex` — split at `\begin{document}`, keep preamble separate
+2. Read `job_description.txt`
+3. Read `prompts/system_prompt.txt`, `prompts/user_constraints.txt` (if non-empty), `prompts/additional_projects.txt` (if non-empty)
+4. Generate tailored body applying all rules; `system_prompt.txt` formatting constraints guarantee one-page fit
+5. Reassemble full `.tex` (preamble + body) and write to `output/<NAME>_Resume.tex`
+
+### `/judge-resume <NAME>`
+Evaluates the generated resume at `output/extras/<NAME>_Resume.txt` against the job description snapshot at `output/extras/<NAME>_jd.txt`.
+
+Steps:
+1. Read `output/extras/<NAME>_Resume.txt` — plain-text resume extract written by the backend
+2. Read `output/extras/<NAME>_jd.txt` — JD snapshot written by the backend for this job
+3. Read `prompts/prompt_summary.txt` and `prompts/evaluator_prompt.txt`
+4. Apply the evaluator rubric; append result to `prompts/daily_feedback.json`
+5. Output only `{"total_score": <number>}` to stdout
+
+### `/optimize-prompt`
+Analyzes daily evaluation feedback and updates `prompts/system_prompt.txt`, `prompts/change_tracker.json`, and `prompts/prompt_summary.txt`.
+
+Steps:
+1. Read `prompts/system_prompt.txt`, `prompts/user_constraints.txt`, `prompts/change_tracker.json`, `prompts/daily_feedback.json`, `prompts/optimizer_prompt.txt`, `prompts/prompt_summary.txt`
+2. Apply optimizer logic (sample gate, aggregate feedback, score rules, decide changes)
+3. Overwrite `prompts/system_prompt.txt` only if `action_taken == PROMPT_MODIFIED`
+4. Always overwrite `prompts/change_tracker.json`
+5. Update `prompts/prompt_summary.txt` if rules changed
+6. Clear `prompts/daily_feedback.json` to `[]` unconditionally
 
 ## Resume Generation Rules (for Claude Code)
 
-1. Read `master_resume.tex` (or `resumes/master_resume.tex`) and split at `\begin{document}` — send only the body
+1. Read `resumes/master_resume.tex` and split at `\begin{document}` — send only the body
 2. Read `job_description.txt`
 3. Read `prompts/system_prompt.txt`
 4. Optionally read `prompts/user_constraints.txt` and `prompts/additional_projects.txt` if non-empty
 5. Only modify content inside `\footnotesize{...}`, `\resumeItem{...}`, and `\textbf{...}` macros — do NOT change structure or preamble
 6. Guarantee one page
 7. Reassemble full `.tex` with original preamble prepended
-8. Write to `output/<NAME>_Resume.tex`
-9. Compile: `pdflatex -interaction=nonstopmode -output-directory=output output/<NAME>_Resume.tex`
-10. Delete aux files: `.aux`, `.log`, `.out`
-11. Open PDF: `start output/<NAME>_Resume.pdf`
+8. Write to `output/<NAME>_Resume.tex` (backend handles compilation)
 
 ---
 
@@ -224,10 +272,35 @@ This reads `job_description.txt` and generates `output/<NAME>_Resume.tex` + PDF 
 | File | Purpose |
 |------|---------|
 | `prompts/system_prompt.txt` | Core AI rules — whitelist of editable sections, one-page guarantee |
-| `prompts/user_constraints.txt` | Per-run hard rules |
+| `prompts/user_constraints.txt` | Per-run hard rules (immutable — never modified by optimizer) |
 | `prompts/additional_projects.txt` | Project bank the AI can swap in |
+| `prompts/prompt_summary.txt` | Compressed rule reference used by the evaluator; kept in sync with system_prompt |
+| `prompts/evaluator_prompt.txt` | Evaluator role, scoring categories, and output schema for `/judge-resume` |
+| `prompts/optimizer_prompt.txt` | Optimizer rules, decision constraints, and output schema for `/optimize-prompt` |
+| `prompts/daily_feedback.json` | Array of evaluation results; consumed and cleared by `/optimize-prompt` |
+| `prompts/change_tracker.json` | Scoring ledger and rule history; updated by every `/optimize-prompt` run |
 
 **If you change the LaTeX template structure in `master_resume.tex`, update the whitelist in `prompts/system_prompt.txt`.**
+
+---
+
+## Feedback Loop System
+
+The project has an automated prompt optimization loop:
+
+```
+generate resume → /judge-resume → daily_feedback.json → /optimize-prompt → system_prompt.txt
+```
+
+1. **Generation**: `/tailor-resume <NAME>` writes `output/<NAME>_Resume.tex`; the backend also writes `output/extras/<NAME>_Resume.txt` (plain-text extract) and `output/extras/<NAME>_jd.txt` (JD snapshot)
+2. **Evaluation**: `/judge-resume <NAME>` scores the resume and appends to `prompts/daily_feedback.json`
+3. **Optimization**: `/optimize-prompt` reads `daily_feedback.json`, applies optimizer logic, and updates `system_prompt.txt` + `change_tracker.json` + `prompt_summary.txt`; then clears `daily_feedback.json`
+
+### `tex_parser.py` — Key functions
+| Function | Purpose |
+|----------|---------|
+| `parse_resume_tex(tex)` | Returns `{"experience": [...], "projects": [...]}` (used by `/details` endpoint) |
+| `format_resume_for_eval(tex)` | Returns clean plain-text (Experience, Projects, Education, Skills) for LLM evaluation |
 
 ---
 
