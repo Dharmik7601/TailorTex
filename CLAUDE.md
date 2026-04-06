@@ -20,9 +20,15 @@ TailorTex/
 │   │   ├── server.py          # FastAPI app — all endpoints
 │   │   └── schemas.py         # Pydantic models
 │   └── core/
-│       ├── generator.py       # Gemini API call (tries gemma-4-31b-it, falls back to gemini-3-flash-preview)
+│       ├── prompt_pipeline.py # Preamble split, prompt file loading, LaTeX post-processing (shared across providers)
 │       ├── compiler.py        # Standalone LaTeX compiler
-│       └── tex_parser.py      # Parse generated .tex into structured data + plain-text for eval
+│       ├── tex_parser.py      # Parse generated .tex into structured data + plain-text for eval
+│       └── providers/
+│           ├── __init__.py    # Provider registry: get_provider(), registered_provider_ids()
+│           ├── base.py        # ResumeProvider ABC + GenerationRequest/GenerationResult dataclasses
+│           ├── registry.py    # ModelConfig dataclass + GEMINI_MODEL_CHAIN (declarative model config)
+│           ├── gemini.py      # GeminiProvider — waterfall fallback across GEMINI_MODEL_CHAIN
+│           └── claude_cli.py  # ClaudeCliProvider — subprocess-based via claude -p /tailor-resume
 ├── frontend/
 │   ├── extension/             # Chrome MV3 side-panel extension
 │   │   ├── manifest.json
@@ -148,13 +154,11 @@ Returns `{"job_id": "<uuid>"}`. Max 5 active jobs (queued + running); returns HT
 ## Job Queue Architecture
 
 ### Per-method worker queues
-Each AI method has its own `queue.Queue` and a single dedicated daemon worker thread:
+Each AI method has its own `queue.Queue` and a single dedicated daemon worker thread. The queue dict is **derived from the provider registry** — registering a new provider automatically creates its queue and worker thread with no changes to `server.py`.
 
 ```
-_work_queues = {
-    "gemini":    queue.Queue(),   →  thread: worker-gemini
-    "claudecli": queue.Queue(),   →  thread: worker-claudecli
-}
+_work_queues = {pid: queue.Queue() for pid in registered_provider_ids()}
+# Currently yields: {"gemini": Queue(), "claudecli": Queue()}
 ```
 
 **Behaviour:**
@@ -172,6 +176,41 @@ On **error**: full Python traceback is written to the job's log list (visible in
 
 ### In-memory only
 The `jobs` dict is in-memory and lost on server restart. The `/open` endpoint handles this with a fallback: if the job_id is not in memory, it reconstructs the path as `output/{company}_Resume.pdf` using the `company` query param passed by the extension.
+
+---
+
+## Backend Provider Architecture
+
+The backend uses a **Strategy + Registry** pattern to keep AI providers cleanly separated and independently extensible.
+
+### Layers
+
+| Layer | File | Responsibility |
+|---|---|---|
+| **Prompt pipeline** | `core/prompt_pipeline.py` | Preamble splitting, prompt file loading, LaTeX post-processing. Shared by all providers. |
+| **Provider interface** | `core/providers/base.py` | `ResumeProvider` ABC, `GenerationRequest`, `GenerationResult` |
+| **Model config** | `core/providers/registry.py` | `ModelConfig` dataclass + `GEMINI_MODEL_CHAIN` list (declarative, replaces if/else branching) |
+| **Gemini provider** | `core/providers/gemini.py` | Iterates `GEMINI_MODEL_CHAIN` with waterfall fallback; handles `supports_system_instruction` per model |
+| **Claude CLI provider** | `core/providers/claude_cli.py` | Writes JD to disk, runs `claude -p /tailor-resume`, compiles result |
+| **Registry** | `core/providers/__init__.py` | `get_provider(id)`, `registered_provider_ids()` |
+
+### Adding a new AI provider
+
+1. Create `backend/core/providers/<name>.py` — implement `ResumeProvider` (define `provider_id` and `generate()`)
+2. In `core/providers/__init__.py`, add two lines:
+   ```python
+   from core.providers.<name> import MyProvider
+   _register(MyProvider())
+   ```
+3. Done — queue worker is created automatically, `server.py` needs no changes
+
+### Adding a new Google model
+
+Edit `GEMINI_MODEL_CHAIN` in `core/providers/registry.py`:
+```python
+ModelConfig(name="gemini-2-pro", supports_system_instruction=True, temperature=0.1)
+```
+Models are tried in order; first success wins.
 
 ---
 

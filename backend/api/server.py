@@ -14,9 +14,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 
 from api.schemas import GenerateResponse, JobStatus, QueueItem, QueueResponse, ResumeDetails
-from core.compiler import compile_latex
-from core.generator import generate_resume
+from core.prompt_pipeline import build_prompts
+from core.providers import GenerationRequest, get_provider, registered_provider_ids
 from core.tex_parser import parse_resume_tex
+
 
 load_dotenv()
 
@@ -46,11 +47,13 @@ jobs: dict[str, dict[str, Any]] = {}
 #   • Two Claude jobs run sequentially  (one queue, one worker)
 #   • A Gemini job + a Claude job run in parallel (separate queues/workers)
 #   • No threads ever block waiting — the worker simply sleeps on queue.get()
+#
+# Queue dict is derived from the provider registry — adding a new provider
+# automatically creates its queue and worker thread with no changes here.
 # ---------------------------------------------------------------------------
 
 _work_queues: dict[str, queue.Queue] = {
-    "gemini":    queue.Queue(),
-    "claudecli": queue.Queue(),
+    pid: queue.Queue() for pid in registered_provider_ids()
 }
 
 
@@ -157,71 +160,42 @@ def _run_generation(job_id, master_resume_tex, job_description, company_name, us
 
     log(f"[debug] method={method}")
     try:
-        if method == "claudecli":
-            pdf_path = _run_claude_cli(job_description, company_name, log)
-        else:
-            _, pdf_path = generate_resume(
-                master_resume_tex=master_resume_tex,
-                job_description=job_description,
-                company_name=company_name,
-                use_constraints=use_constraints,
-                use_projects=use_projects,
-                log_callback=log,
-            )
+        provider = get_provider(method)
+
+        pipeline = build_prompts(
+            master_resume_tex=master_resume_tex,
+            job_description=job_description,
+            use_constraints=use_constraints,
+            use_projects=use_projects,
+            log=log,
+        )
+
+        request = GenerationRequest(
+            system_prompt=pipeline.system_prompt,
+            user_prompt=pipeline.user_prompt,
+            company_name=company_name,
+            preamble=pipeline.preamble,
+            raw_job_description=pipeline.raw_job_description,
+            log=log,
+        )
+
+        result = provider.generate(request)
 
         # Auto-open the PDF with the system default viewer
         if sys.platform == "win32":
-            os.startfile(pdf_path)
+            os.startfile(result.pdf_path)
         elif sys.platform == "darwin":
-            subprocess.run(["open", pdf_path])
+            subprocess.run(["open", result.pdf_path])
         else:
-            subprocess.run(["xdg-open", pdf_path])
+            subprocess.run(["xdg-open", result.pdf_path])
 
-        jobs[job_id]["pdf_path"] = pdf_path
+        jobs[job_id]["pdf_path"] = result.pdf_path
         jobs[job_id]["status"] = "completed"  # PDF ready — unblock SSE immediately
 
-    except Exception as e:
+    except Exception:
         for line in traceback.format_exc().splitlines():
             log(line)
         jobs[job_id]["status"] = "error"
-
-
-def _run_claude_cli(job_description: str, company_name: str, log) -> str:
-    """Write JD to job_description.txt, run claude -p /tailor-resume to generate the .tex,
-    then compile and clean up via the backend (same as Gemini path)."""
-    jd_path = os.path.join(BASE_DIR, "job_description.txt")
-    with open(jd_path, "w", encoding="utf-8") as f:
-        f.write(job_description)
-
-    log(f"Running Claude Code pipeline for {company_name}...")
-    result = subprocess.run(
-        ["claude", "-p", f"/tailor-resume {company_name}"],
-        cwd=BASE_DIR,
-        capture_output=True,
-        text=True,
-    )
-
-    if result.stdout:
-        for line in result.stdout.splitlines():
-            log(line)
-    if result.returncode != 0:
-        err = result.stderr.strip() or "claude -p exited with non-zero status"
-        raise RuntimeError(err)
-
-    output_dir = os.path.join(BASE_DIR, "output")
-    tex_path = os.path.join(output_dir, f"{company_name}_Resume.tex")
-    if not os.path.exists(tex_path):
-        raise RuntimeError(f"TeX file not found at {tex_path} after Claude run")
-
-    log("Compiling LaTeX to PDF...")
-    compile_latex(tex_path, output_dir, log_callback=log)
-
-    pdf_path = os.path.join(output_dir, f"{company_name}_Resume.pdf")
-    if not os.path.exists(pdf_path):
-        raise RuntimeError(f"PDF not found at {pdf_path} after compilation")
-
-    log("Done!")
-    return pdf_path
 
 
 @app.get("/queue", response_model=QueueResponse)
