@@ -271,25 +271,42 @@ button:disabled { background: #555; cursor: not-allowed; }
 }
 
 .job-open-btn,
-.job-details-btn {
+.job-details-btn,
+.job-recompile-btn,
+.job-delete-btn {
   width: auto;
   padding: 5px 12px;
-  background: #1a3a1a;
-  color: #4caf50;
-  border: 1px solid #2a5a2a;
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
 }
+.job-open-btn {
+  background: #1a3a1a;
+  color: #4caf50;
+  border: 1px solid #2a5a2a;
+}
 .job-open-btn:hover { background: #2a5a2a; }
 .job-details-btn {
   background: #1a2a4a;
   color: #5599ff;
-  border-color: #2a4a7a;
+  border: 1px solid #2a4a7a;
 }
 .job-details-btn:hover { background: #2a4a7a; }
+.job-recompile-btn {
+  background: #2a2000;
+  color: #ffc107;
+  border: 1px solid #4a3800;
+}
+.job-recompile-btn:hover:not(:disabled) { background: #3a2e00; }
+.job-recompile-btn:disabled { background: #1a1a1a; color: #666; border-color: #333; cursor: not-allowed; }
+.job-delete-btn {
+  background: #2a0000;
+  color: #f44336;
+  border: 1px solid #4a0000;
+}
+.job-delete-btn:hover { background: #3a0000; }
 
 /* Details section */
 #details-section {

@@ -167,6 +167,53 @@ function updateSlotCounter(jobs) {
   }
 }
 
+// ── Build the actions row for a completed or error job ────────────────────────
+function createActionsDiv(job, card) {
+  const actions = document.createElement('div');
+  actions.className = 'job-actions';
+
+  if (job.status === 'completed') {
+    const openBtn = document.createElement('button');
+    openBtn.className = 'job-open-btn';
+    openBtn.textContent = 'Open PDF';
+    openBtn.addEventListener('click', async () => {
+      try {
+        const url = `${API}/open/${job.job_id}?company=${encodeURIComponent(job.company)}`;
+        const r = await fetch(url);
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({}));
+          alert(d.detail || 'Could not open PDF');
+        }
+      } catch (e) {
+        alert('Could not open PDF: ' + e.message);
+      }
+    });
+
+    const detBtn = document.createElement('button');
+    detBtn.className = 'job-details-btn';
+    detBtn.textContent = 'View Details';
+    detBtn.addEventListener('click', () => showDetails(job));
+
+    actions.appendChild(openBtn);
+    actions.appendChild(detBtn);
+  }
+
+  const recompileBtn = document.createElement('button');
+  recompileBtn.className = 'job-recompile-btn';
+  recompileBtn.textContent = 'Recompile';
+  recompileBtn.addEventListener('click', () => recompileJob(job, card));
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'job-delete-btn';
+  deleteBtn.textContent = 'Delete';
+  deleteBtn.addEventListener('click', () => deleteJobFiles(job));
+
+  actions.appendChild(recompileBtn);
+  actions.appendChild(deleteBtn);
+
+  return actions;
+}
+
 // ── Create a new job card DOM element (called once per job) ───────────────────
 function createJobCard(job) {
   const card = document.createElement('div');
@@ -198,7 +245,6 @@ function createJobCard(job) {
     <div class="job-card-body">
       <button class="job-log-toggle">Logs ▸</button>
       <pre class="job-card-logs" style="display:none"></pre>
-      ${job.status === 'completed' ? `<div class="job-actions"><button class="job-open-btn">Open PDF</button><button class="job-details-btn">View Details</button></div>` : ''}
     </div>
   `;
 
@@ -220,21 +266,9 @@ function createJobCard(job) {
     e.target.textContent = open ? 'Logs ▸' : 'Logs ▾';
   });
 
-  // Open PDF + View Details buttons (if already completed at creation time)
-  if (job.status === 'completed') {
-    card.querySelector('.job-open-btn').addEventListener('click', async () => {
-      try {
-        const url = `${API}/open/${job.job_id}?company=${encodeURIComponent(job.company)}`;
-        const r = await fetch(url);
-        if (!r.ok) {
-          const d = await r.json().catch(() => ({}));
-          alert(d.detail || 'Could not open PDF');
-        }
-      } catch (e) {
-        alert('Could not open PDF: ' + e.message);
-      }
-    });
-    card.querySelector('.job-details-btn').addEventListener('click', () => showDetails(job));
+  // Actions row for completed and error statuses
+  if (job.status === 'completed' || job.status === 'error') {
+    card.querySelector('.job-card-body').appendChild(createActionsDiv(job, card));
   }
 
   // Populate log from storage if available (e.g. panel reopen after completion)
@@ -260,36 +294,23 @@ function patchJobCard(card, job) {
     statusBadge.className = `status-badge ${statusClass}`;
   }
 
-  // Add Open PDF + View Details buttons if job just completed and not yet present
-  if (job.status === 'completed' && !card.querySelector('.job-actions')) {
-    const actions = document.createElement('div');
-    actions.className = 'job-actions';
-
-    const btn = document.createElement('button');
-    btn.className = 'job-open-btn';
-    btn.textContent = 'Open PDF';
-    btn.addEventListener('click', async () => {
-      try {
-        const url = `${API}/open/${job.job_id}?company=${encodeURIComponent(job.company)}`;
-        const r = await fetch(url);
-        if (!r.ok) {
-          const d = await r.json().catch(() => ({}));
-          alert(d.detail || 'Could not open PDF');
-        }
-      } catch (e) {
-        alert('Could not open PDF: ' + e.message);
-      }
-    });
-
-    const detBtn = document.createElement('button');
-    detBtn.className = 'job-details-btn';
-    detBtn.textContent = 'View Details';
-    detBtn.addEventListener('click', () => showDetails(job));
-
-    actions.appendChild(btn);
-    actions.appendChild(detBtn);
-    const body = card.querySelector('.job-card-body');
-    if (body) body.appendChild(actions);
+  // Manage actions row for completed and error statuses
+  if (job.status === 'completed') {
+    // Always rebuild actions on completed: handles first-time and error→completed transition.
+    // A completed actions div has .job-open-btn; error actions div does not.
+    const existing = card.querySelector('.job-actions');
+    if (!existing || !existing.querySelector('.job-open-btn')) {
+      if (existing) existing.remove();
+      const body = card.querySelector('.job-card-body');
+      if (body) body.appendChild(createActionsDiv(job, card));
+    }
+  } else if (job.status === 'error') {
+    const existing = card.querySelector('.job-actions');
+    if (!existing || existing.querySelector('.job-open-btn')) {
+      if (existing) existing.remove();
+      const body = card.querySelector('.job-card-body');
+      if (body) body.appendChild(createActionsDiv(job, card));
+    }
   }
 
   // Update log text only if no live SSE in this tab (e.g. cross-tab sync update)
@@ -506,6 +527,71 @@ function hideDetails() {
   $('queue-section').style.display = '';
 }
 
+// ── Recompile a job's .tex file ───────────────────────────────────────────────
+async function recompileJob(job, card) {
+  const btn = card.querySelector('.job-recompile-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Recompiling…';
+  }
+
+  try {
+    const r = await fetch(
+      `${API}/recompile/${job.job_id}?company=${encodeURIComponent(job.company)}`,
+      { method: 'POST' }
+    );
+    if (r.ok) {
+      await updateJobStatus(job.job_id, { status: 'completed', pdf_ready: true });
+      // Re-enable btn for completed→completed: patchJobCard skips rebuild when
+      // the actions div already has .job-open-btn, so the button stays in the DOM.
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Recompile';
+      }
+    } else {
+      const d = await r.json().catch(() => ({}));
+      const errorMsg = d.detail || r.statusText;
+      const allJobs = await getJobs();
+      const stored = allJobs.find(j => j.job_id === job.job_id);
+      const updatedLog = [...(stored?.log || []), `[recompile error] ${errorMsg}`];
+      await updateJobStatus(job.job_id, { status: 'error', log: updatedLog });
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Recompile';
+      }
+      alert('Recompile failed:\n' + errorMsg);
+    }
+  } catch (e) {
+    const errorMsg = e.message;
+    const allJobs = await getJobs();
+    const stored = allJobs.find(j => j.job_id === job.job_id);
+    const updatedLog = [...(stored?.log || []), `[recompile error] ${errorMsg}`];
+    await updateJobStatus(job.job_id, { status: 'error', log: updatedLog });
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Recompile';
+    }
+    alert('Recompile error: ' + errorMsg);
+  }
+}
+
+// ── Delete a job's output files from disk and remove card ─────────────────────
+async function deleteJobFiles(job) {
+  try {
+    await fetch(
+      `${API}/files/${job.job_id}?company=${encodeURIComponent(job.company)}`,
+      { method: 'DELETE' }
+    );
+  } catch (_) {
+    // Best-effort — always remove from queue even if server is unreachable
+  }
+  if (sseMap.has(job.job_id)) {
+    sseMap.get(job.job_id).close();
+    sseMap.delete(job.job_id);
+  }
+  removeJob(job.job_id);
+}
+
 // ── Submit generation job ─────────────────────────────────────────────────────
 async function generate() {
   const company    = $('company-name').value.trim();
@@ -585,5 +671,6 @@ if (typeof module !== 'undefined') {
   module.exports = {
     renderQueue, attachSSE, createJobCard, patchJobCard, updateSlotCounter,
     getJobs, saveJobs, escHtml, logCache, sseMap,
+    createActionsDiv, recompileJob, deleteJobFiles,
   };
 }

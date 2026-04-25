@@ -299,6 +299,96 @@ def get_details(job_id: str, company: Optional[str] = None):
         raise HTTPException(status_code=500, detail=f"Parse error: {e}")
 
 
+@app.post("/recompile/{job_id}")
+def recompile(job_id: str, company: Optional[str] = None):
+    """Recompile the .tex file for a job and update job status on success."""
+    from core.compiler import compile_latex
+
+    if job_id in jobs:
+        job = jobs[job_id]
+        company_name = job.get("company_name") or company
+        pdf_path_stored = job.get("pdf_path")
+        if pdf_path_stored:
+            tex_path = pdf_path_stored.replace(".pdf", ".tex")
+        elif company_name:
+            tex_path = os.path.join(BASE_DIR, "output", f"{company_name}_Resume.tex")
+        else:
+            raise HTTPException(status_code=400, detail="Cannot determine .tex path")
+    elif company:
+        company_name = company
+        tex_path = os.path.join(BASE_DIR, "output", f"{company}_Resume.tex")
+    else:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if not os.path.exists(tex_path):
+        raise HTTPException(status_code=404, detail=f"TeX file not found: {tex_path}")
+
+    output_dir = os.path.dirname(tex_path)
+    pdf_path = tex_path.replace(".tex", ".pdf")
+
+    # Record mtime before compile to detect whether a new PDF is produced
+    mtime_before = os.path.getmtime(pdf_path) if os.path.exists(pdf_path) else None
+
+    log_lines: list[str] = []
+    try:
+        compile_latex(tex_path, output_dir, log_callback=log_lines.append)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # Success = PDF now exists AND is newer than before (or freshly created)
+    if os.path.exists(pdf_path):
+        mtime_after = os.path.getmtime(pdf_path)
+        success = mtime_before is None or mtime_after > mtime_before
+    else:
+        success = False
+
+    if not success:
+        detail = "\n".join(log_lines) if log_lines else "Compilation failed — PDF not produced or unchanged"
+        raise HTTPException(status_code=500, detail=detail)
+
+    # Update in-memory job if present
+    if job_id in jobs:
+        jobs[job_id]["status"] = "completed"
+        jobs[job_id]["pdf_path"] = pdf_path
+        if log_lines:
+            jobs[job_id]["log"].append("[recompile]")
+            jobs[job_id]["log"].extend(log_lines)
+
+    return {"status": "completed", "pdf_path": pdf_path}
+
+
+@app.delete("/files/{job_id}")
+def delete_files(job_id: str, company: Optional[str] = None):
+    """Delete the .tex, .pdf, and extras files for a job from disk."""
+    if job_id in jobs:
+        company_name = jobs[job_id].get("company_name") or company
+    elif company:
+        company_name = company
+    else:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if not company_name:
+        raise HTTPException(status_code=400, detail="Cannot determine company name")
+
+    output_dir = os.path.join(BASE_DIR, "output")
+    extras_dir = os.path.join(BASE_DIR, "output", "extras")
+    deleted = []
+
+    for ext in [".tex", ".pdf"]:
+        path = os.path.join(output_dir, f"{company_name}_Resume{ext}")
+        if os.path.exists(path):
+            os.remove(path)
+            deleted.append(path)
+
+    for suffix in ["_Resume.txt", "_jd.txt"]:
+        path = os.path.join(extras_dir, f"{company_name}{suffix}")
+        if os.path.exists(path):
+            os.remove(path)
+            deleted.append(path)
+
+    return {"deleted": deleted}
+
+
 @app.get("/open/{job_id}")
 def open_pdf(job_id: str, company: Optional[str] = None):
     """Open the PDF with the system default viewer on the server machine.

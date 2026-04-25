@@ -305,13 +305,12 @@ def test_download_unknown_job_returns_404(client):
 
 
 def test_download_non_completed_job_returns_400(client, master_resume_name):
-    r = client.post("/generate", data={
-        "job_description": "JD", "company_name": "Acme",
-        "resume_name": master_resume_name,
-    })
-    job_id = r.json()["job_id"]
-    # Forcibly set status to queued so it's definitely not completed
-    jobs[job_id]["status"] = "queued"
+    job_id = "download-queued-test"
+    jobs[job_id] = {
+        "status": "queued", "log": [], "pdf_path": None,
+        "company_name": "Acme", "resume_name": master_resume_name,
+        "method": "gemini",
+    }
     assert client.get(f"/download/{job_id}").status_code == 400
 
 
@@ -479,6 +478,72 @@ def test_full_generate_flow_records_error_on_provider_failure(client, master_res
 
         assert job_status["status"] == "error"
         assert any("simulated provider failure" in line for line in job_status["log"])
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# POST /recompile/{job_id}
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_recompile_unknown_job_without_company_returns_404(client):
+    assert client.post("/recompile/no-such-id").status_code == 404
+
+
+def test_recompile_missing_tex_returns_404(client, tmp_path):
+    job_id = "recompile-missing-tex"
+    jobs[job_id] = {
+        "status": "error", "log": [], "pdf_path": str(tmp_path / "Missing_Resume.pdf"),
+        "company_name": "Missing", "resume_name": "resumes/master_resume.tex", "method": "gemini",
+    }
+    r = client.post(f"/recompile/{job_id}?company=Missing")
+    assert r.status_code == 404
+
+
+def test_recompile_success_returns_200_and_marks_completed(client, tmp_path):
+    import time as _time
+
+    tex = tmp_path / "RecompileOK_Resume.tex"
+    pdf = tmp_path / "RecompileOK_Resume.pdf"
+    tex.write_text(r"\documentclass{article}\begin{document}hi\end{document}")
+    pdf.write_bytes(b"%PDF-1.4 old")
+
+    job_id = "recompile-success-job"
+    jobs[job_id] = {
+        "status": "error", "log": ["prev error"], "pdf_path": str(pdf),
+        "company_name": "RecompileOK", "resume_name": "resumes/master_resume.tex", "method": "gemini",
+    }
+
+    def fake_compile(tex_path, output_dir, log_callback=None):
+        # Sleep briefly so mtime is strictly newer than the original write
+        _time.sleep(0.05)
+        pdf.write_bytes(b"%PDF-1.4 new")
+
+    # The endpoint does `from core.compiler import compile_latex` at call time,
+    # so patching core.compiler.compile_latex intercepts that import.
+    with patch("core.compiler.compile_latex", fake_compile):
+        r = client.post(f"/recompile/{job_id}")
+
+    assert r.status_code == 200
+    assert r.json()["status"] == "completed"
+    assert jobs[job_id]["status"] == "completed"
+
+
+def test_recompile_compile_failure_returns_500(client, tmp_path):
+    tex = tmp_path / "RecompileFail_Resume.tex"
+    tex.write_text(r"\documentclass{article}\begin{document}hi\end{document}")
+
+    job_id = "recompile-fail-job"
+    jobs[job_id] = {
+        "status": "completed", "log": [], "pdf_path": str(tmp_path / "RecompileFail_Resume.pdf"),
+        "company_name": "RecompileFail", "resume_name": "resumes/master_resume.tex", "method": "gemini",
+    }
+
+    def exploding_compile(tex_path, output_dir, log_callback=None):
+        raise RuntimeError("pdflatex not found")
+
+    with patch("core.compiler.compile_latex", exploding_compile):
+        r = client.post(f"/recompile/{job_id}")
+
+    assert r.status_code == 500
 
 
 def test_full_generate_flow_claudecli_method(client, master_resume_name, tmp_path):
