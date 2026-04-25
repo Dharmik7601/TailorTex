@@ -7,6 +7,9 @@ const $ = id => document.getElementById(id);
 // Module-level map of job_id -> EventSource to avoid duplicate SSE connections
 const sseMap = new Map();
 
+// Which section to return to when the details view is dismissed ('main' | 'output')
+let detailsReturnTo = 'main';
+
 // Module-level log cache: job_id -> string[] (in-memory, per tab, per panel session)
 // Log lines are never written to storage during streaming — only at job completion/error.
 const logCache = new Map();
@@ -42,6 +45,24 @@ async function loadResumes() {
     });
   } catch (_) {
     sel.innerHTML = '<option value="">Could not load resumes</option>';
+  }
+}
+
+// ── Populate location dropdown from server ────────────────────────────────────
+async function loadLocations() {
+  const sel = $('location-select');
+  try {
+    const r = await fetch(`${API}/locations`);
+    const data = await r.json();
+    sel.innerHTML = '';
+    data.locations.forEach(loc => {
+      const opt = document.createElement('option');
+      opt.value = loc;
+      opt.textContent = loc;
+      sel.appendChild(opt);
+    });
+  } catch (_) {
+    sel.innerHTML = '<option value="">Could not load locations</option>';
   }
 }
 
@@ -434,9 +455,11 @@ function copyToClipboard(text) {
   setTimeout(() => toast.classList.remove('show'), 1500);
 }
 
-async function showDetails(job) {
+async function showDetails(job, returnTo = 'main') {
+  detailsReturnTo = returnTo;
   $('form-section').style.display = 'none';
   $('queue-section').style.display = 'none';
+  $('output-section').style.display = 'none';
   $('details-section').style.display = 'block';
   $('details-company-name').textContent = job.company;
   $('details-content').innerHTML = '<div style="color:#888;font-size:12px;">Loading...</div>';
@@ -523,8 +546,12 @@ function renderDetails(data) {
 function hideDetails() {
   $('details-section').style.display = 'none';
   $('details-content').innerHTML = '';
-  $('form-section').style.display = '';
-  $('queue-section').style.display = '';
+  if (detailsReturnTo === 'output') {
+    $('output-section').style.display = 'block';
+  } else {
+    $('form-section').style.display = '';
+    $('queue-section').style.display = '';
+  }
 }
 
 // ── Recompile a job's .tex file ───────────────────────────────────────────────
@@ -592,12 +619,126 @@ async function deleteJobFiles(job) {
   removeJob(job.job_id);
 }
 
+// ── Output browser ────────────────────────────────────────────────────────────
+function showOutputBrowser() {
+  $('form-section').style.display = 'none';
+  $('queue-section').style.display = 'none';
+  $('details-section').style.display = 'none';
+  $('output-section').style.display = 'block';
+  loadOutputResumes();
+}
+
+function hideOutputBrowser() {
+  $('output-section').style.display = 'none';
+  $('form-section').style.display = '';
+  $('queue-section').style.display = '';
+}
+
+async function loadOutputResumes() {
+  const list = $('output-list');
+  list.innerHTML = '<div class="output-empty">Loading...</div>';
+  try {
+    const r = await fetch(`${API}/output/resumes`);
+    const data = await r.json();
+    list.innerHTML = '';
+    if (!data.resumes.length) {
+      list.innerHTML = '<div class="output-empty">No saved resumes found in output/.</div>';
+      return;
+    }
+    data.resumes.forEach(item => list.appendChild(createOutputResumeCard(item.company)));
+  } catch (e) {
+    list.innerHTML = `<div class="output-empty" style="color:#f44336;">Failed to load: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function createOutputResumeCard(company) {
+  const card = document.createElement('div');
+  card.className = 'job-card';
+  card.dataset.company = company;
+
+  const header = document.createElement('div');
+  header.className = 'job-card-header';
+  header.innerHTML = `<div class="job-card-info"><span class="job-company">${escHtml(company)}</span></div>`;
+  card.appendChild(header);
+
+  const body = document.createElement('div');
+  body.className = 'job-card-body';
+
+  const actions = document.createElement('div');
+  actions.className = 'job-actions';
+
+  const openBtn = document.createElement('button');
+  openBtn.className = 'job-open-btn';
+  openBtn.textContent = 'Open PDF';
+  openBtn.addEventListener('click', async () => {
+    try {
+      const r = await fetch(`${API}/open/_?company=${encodeURIComponent(company)}`);
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        alert(d.detail || 'Could not open PDF');
+      }
+    } catch (e) {
+      alert('Could not open PDF: ' + e.message);
+    }
+  });
+
+  const detBtn = document.createElement('button');
+  detBtn.className = 'job-details-btn';
+  detBtn.textContent = 'View Details';
+  detBtn.addEventListener('click', () => showDetails({ job_id: '_', company }, 'output'));
+
+  const recompileBtn = document.createElement('button');
+  recompileBtn.className = 'job-recompile-btn';
+  recompileBtn.textContent = 'Recompile';
+  recompileBtn.addEventListener('click', async () => {
+    recompileBtn.disabled = true;
+    recompileBtn.textContent = 'Recompiling…';
+    try {
+      const r = await fetch(`${API}/recompile/_?company=${encodeURIComponent(company)}`, { method: 'POST' });
+      recompileBtn.disabled = false;
+      recompileBtn.textContent = 'Recompile';
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        alert('Recompile failed:\n' + (d.detail || r.statusText));
+      }
+    } catch (e) {
+      recompileBtn.disabled = false;
+      recompileBtn.textContent = 'Recompile';
+      alert('Recompile error: ' + e.message);
+    }
+  });
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'job-delete-btn';
+  deleteBtn.textContent = 'Delete';
+  deleteBtn.addEventListener('click', async () => {
+    try {
+      await fetch(`${API}/files/_?company=${encodeURIComponent(company)}`, { method: 'DELETE' });
+    } catch (_) {}
+    card.remove();
+    const list = $('output-list');
+    if (!list.querySelector('.job-card')) {
+      list.innerHTML = '<div class="output-empty">No saved resumes found in output/.</div>';
+    }
+  });
+
+  actions.appendChild(openBtn);
+  actions.appendChild(detBtn);
+  actions.appendChild(recompileBtn);
+  actions.appendChild(deleteBtn);
+  body.appendChild(actions);
+  card.appendChild(body);
+
+  return card;
+}
+
 // ── Submit generation job ─────────────────────────────────────────────────────
 async function generate() {
   const company    = $('company-name').value.trim();
   const jd         = $('jd').value.trim();
   const resumeName = $('resume-select').value;
   const method     = $('method-select').value;
+  const location   = $('location-select').value;
   const useConstraints = $('use-constraints').checked;
   const useProjects    = $('use-projects').checked;
 
@@ -610,6 +751,7 @@ async function generate() {
   fd.append('job_description', jd);
   fd.append('resume_name',     resumeName);
   fd.append('method',          method);
+  fd.append('location',        location);
   fd.append('use_constraints', useConstraints);
   fd.append('use_projects',    useProjects);
 
@@ -645,6 +787,7 @@ async function generate() {
 document.addEventListener('DOMContentLoaded', async () => {
   const online = await checkAPI();
   await loadResumes();
+  await loadLocations();
 
   const { jd, company } = await extractFromPage();
   if (jd)      $('jd').value           = jd;
@@ -653,6 +796,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('generate-btn').disabled = !online;
   $('generate-btn').addEventListener('click', generate);
   $('details-back-btn').addEventListener('click', hideDetails);
+  $('browse-output-btn').addEventListener('click', showOutputBrowser);
+  $('output-back-btn').addEventListener('click', hideOutputBrowser);
 
   // Initial render from storage
   const jobs = await getJobs();
@@ -672,5 +817,6 @@ if (typeof module !== 'undefined') {
     renderQueue, attachSSE, createJobCard, patchJobCard, updateSlotCounter,
     getJobs, saveJobs, escHtml, logCache, sseMap,
     createActionsDiv, recompileJob, deleteJobFiles,
+    loadLocations, showOutputBrowser, hideOutputBrowser, loadOutputResumes, createOutputResumeCard,
   };
 }

@@ -128,6 +128,8 @@ BACKUP_LOCATION=C:\Path\To\Your\Backup\Folder
 |--------|------|-------------|
 | GET | `/health` | Health check |
 | GET | `/resumes` | List `.tex` files in `resumes/` |
+| GET | `/locations` | List supported resume locations |
+| GET | `/output/resumes` | List valid resumes in `output/` (both `.tex` and `.pdf` present) |
 | POST | `/generate` | Submit a job (form fields below) |
 | GET | `/queue` | All jobs currently in memory |
 | GET | `/status/{job_id}` | SSE stream of log lines + completion event |
@@ -135,6 +137,8 @@ BACKUP_LOCATION=C:\Path\To\Your\Backup\Folder
 | GET | `/open/{job_id}?company=X` | Open the PDF with the system default viewer |
 | GET | `/download/{job_id}` | Serve the PDF as a file download |
 | GET | `/details/{job_id}?company=X` | Return parsed Experience and Projects from the generated .tex |
+| POST | `/recompile/{job_id}?company=X` | Recompile the `.tex` for a job; updates job status on success |
+| DELETE | `/files/{job_id}?company=X` | Delete `.tex`, `.pdf`, and extras files from disk |
 
 ### POST `/generate` form fields
 | Field | Type | Description |
@@ -144,10 +148,17 @@ BACKUP_LOCATION=C:\Path\To\Your\Backup\Folder
 | `resume_name` | string | e.g. `resumes/master_resume.tex` |
 | `resume_file` | file | Alternative to resume_name |
 | `method` | string | `"gemini"` or `"claudecli"` |
+| `location` | string | Resume header location (default: `"Rochester, NY, USA"`). See `GET /locations` for options. |
 | `use_constraints` | bool | Append user_constraints.txt to prompt |
 | `use_projects` | bool | Append additional_projects.txt to prompt |
 
 Returns `{"job_id": "<uuid>"}`. Max 5 active jobs (queued + running); returns HTTP 429 if full.
+
+### Location replacement
+
+Before the prompt is built, the backend replaces the `{City, ST, Country}` pattern inside the resume's `\begin{center}...\end{center}` header block with the chosen location. The replacement is constrained to that block so university names (e.g., `{Rochester, NY, USA}` in the Education section) are never touched.
+
+To add a new location, append it to the `LOCATIONS` list in `backend/api/server.py` — no other changes needed.
 
 ---
 
@@ -250,13 +261,24 @@ Each active job gets an `EventSource` connection to `/status/{job_id}`. Connecti
 | `getJobs()` / `saveJobs()` | Read/write `chrome.storage.local` |
 | `updateJobStatus()` | Patch a single job's fields in storage |
 | `removeJob()` | Remove a job from storage (discard button) |
+| `loadLocations()` | Fetches `/locations`, populates the Location dropdown |
+| `recompileJob(job, card)` | Calls `/recompile/{job_id}`, updates status in storage; handles all state transitions |
+| `deleteJobFiles(job)` | Calls `DELETE /files/{job_id}`, then removes job from storage |
+| `showOutputBrowser()` / `hideOutputBrowser()` | Toggle the output browser page (same hide/show pattern as details view) |
+| `loadOutputResumes()` | Fetches `/output/resumes`, renders archived resume cards |
+| `createOutputResumeCard(company)` | Card with Open PDF, View Details, Recompile, Delete for a disk-only resume |
 
 ### Queue UI behaviour
 - Form stays visible at all times (no more single-job status screen)
 - Slot counter shows `N / 5 slots used`
+- Location dropdown populated from `GET /locations` at startup; value sent with every generate request
 - Generate button disabled when 5 slots are full or API is offline
-- Each job card shows: company, resume file, method badge, status badge, collapsible logs, Open PDF button (completed only), X discard button
+- Each job card shows: company, resume file, method badge, status badge, collapsible logs, Open PDF + View Details (completed), Recompile + Delete (completed and error), X discard button
 - **Open PDF** calls `GET /open/{job_id}?company={company}` — server opens file locally, nothing sent back to extension
+- **Browse Output** button (queue header) opens the output browser page — lists all resumes in `output/` that have both `.tex` and `.pdf` present, with the same four actions (Open PDF, View Details, Recompile, Delete). View Details from the output browser returns to the output browser, not the main form.
+
+### Output browser — how archived endpoints work
+Archived resumes (loaded via Browse Output) have no `job_id` in the server's in-memory `jobs` dict. All relevant endpoints (`/open`, `/details`, `/recompile`, `/files`) fall back to reconstructing the file path from the `company` query parameter when the provided `job_id` is not found. The extension uses `job_id='_'` for all archived-resume requests, which reliably triggers this fallback.
 
 ---
 

@@ -1,6 +1,7 @@
 import asyncio
 import os
 import queue
+import re
 import subprocess
 import sys
 import threading
@@ -22,6 +23,11 @@ from core.tex_parser import parse_resume_tex
 load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+LOCATIONS = [
+    "Rochester, NY, USA",
+    "San Jose, CA, USA",
+]
 
 app = FastAPI(title="TailorTex API")
 
@@ -74,6 +80,27 @@ for _method in _work_queues:
     t.start()
 
 
+def _replace_location(tex: str, location: str) -> str:
+    """Replace the City, ST, Country pattern inside the resume's \\begin{center} header block."""
+    replacement = '{' + location + '}'
+
+    def _replace_in_center(m: re.Match) -> str:
+        return re.sub(
+            r'\{[^}]+,\s*[A-Z]{2},\s*[A-Za-z ]+\}',
+            lambda _: replacement,
+            m.group(0),
+            count=1,
+        )
+
+    return re.sub(
+        r'\\begin\{center\}.*?\\end\{center\}',
+        _replace_in_center,
+        tex,
+        count=1,
+        flags=re.DOTALL,
+    )
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -94,6 +121,27 @@ def list_resumes():
     return {"resumes": resumes}
 
 
+@app.get("/locations")
+def list_locations():
+    """Return the list of supported resume locations."""
+    return {"locations": LOCATIONS}
+
+
+@app.get("/output/resumes")
+def list_output_resumes():
+    """Return all resumes in output/ that have both a .tex and .pdf file (valid resumes)."""
+    output_dir = os.path.join(BASE_DIR, "output")
+    valid = []
+    if os.path.exists(output_dir):
+        for f in sorted(os.listdir(output_dir)):
+            if f.endswith("_Resume.pdf"):
+                company = f[: -len("_Resume.pdf")]
+                tex_path = os.path.join(output_dir, f"{company}_Resume.tex")
+                if os.path.exists(tex_path):
+                    valid.append({"company": company})
+    return {"resumes": valid}
+
+
 @app.post("/generate", response_model=GenerateResponse)
 async def generate(
     job_description: str = Form(...),
@@ -103,6 +151,7 @@ async def generate(
     resume_name: Optional[str] = Form(None),
     resume_file: Optional[UploadFile] = File(None),
     method: str = Form("gemini"),
+    location: str = Form("Rochester, NY, USA"),
 ):
     # Resolve resume content
     if resume_name:
@@ -146,12 +195,13 @@ async def generate(
         "use_constraints": use_constraints,
         "use_projects": use_projects,
         "method": method,
+        "location": location,
     })
 
     return GenerateResponse(job_id=job_id)
 
 
-def _run_generation(job_id, master_resume_tex, job_description, company_name, use_constraints, use_projects, method="gemini"):
+def _run_generation(job_id, master_resume_tex, job_description, company_name, use_constraints, use_projects, method="gemini", location="Rochester, NY, USA"):
     """Called by the per-method worker thread — runs exactly one job at a time per method."""
     jobs[job_id]["status"] = "running"
 
@@ -159,6 +209,8 @@ def _run_generation(job_id, master_resume_tex, job_description, company_name, us
         jobs[job_id]["log"].append(msg)
 
     log(f"[debug] method={method}")
+    log(f"[debug] location={location}")
+    master_resume_tex = _replace_location(master_resume_tex, location)
     try:
         provider = get_provider(method)
 

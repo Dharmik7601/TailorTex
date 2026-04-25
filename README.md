@@ -11,6 +11,8 @@ Rewrites your LaTeX resume to match a job description — compiles to PDF via `p
 - One-page output guaranteed
 - Compiles `.tex` → `.pdf` automatically and opens it
 - Multi-job queue with parallel Gemini + Claude runs
+- Location selector — choose the city/state shown in the resume header per job submission; extensible via a single list in the backend
+- Output browser — browse all saved resumes on disk with Open PDF, View Details, Recompile, and Delete actions
 - Two modes: Chrome extension (recommended) or CLI
 
 ## Requirements

@@ -40,6 +40,13 @@
       </select>
     </div>
 
+    <div class="field">
+      <label for="location-select">Location</label>
+      <select id="location-select">
+        <option value="">Loading...</option>
+      </select>
+    </div>
+
     <div class="checkboxes">
       <label><input type="checkbox" id="use-constraints" checked> Constraints</label>
       <label><input type="checkbox" id="use-projects" checked> Projects</label>
@@ -52,8 +59,18 @@
   <div id="queue-section">
     <div id="queue-header">
       <span id="slot-counter">0 / 5 slots used</span>
+      <button id="browse-output-btn">Browse Output</button>
     </div>
     <div id="job-list"></div>
+  </div>
+
+  <!-- OUTPUT BROWSER (hidden by default) -->
+  <div id="output-section" style="display:none">
+    <div id="output-header">
+      <button id="output-back-btn">&larr; Back</button>
+      <span id="output-title">Saved Resumes</span>
+    </div>
+    <div id="output-list"></div>
   </div>
 
   <!-- DETAILS VIEW (hidden by default) -->
