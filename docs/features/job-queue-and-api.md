@@ -202,6 +202,7 @@ The extension uses `job_id='_'` for all archived-resume requests (from the outpu
 | GET | `/resumes` | Lists `.tex` files in `resumes/` with `resumes/` prefix |
 | GET | `/locations` | Returns `LOCATIONS` list from server module |
 | GET | `/output/resumes` | Lists `output/` entries where both `.tex` and `.pdf` exist |
+| GET | `/job_details/{company}` | Returns stored generation inputs for a company (for Retry) |
 | GET | `/queue` | Returns all jobs in the in-memory store + `active_count` |
 | GET | `/status/{job_id}` | SSE stream — emits log lines, then `completed` or `error` event |
 | GET | `/status/{job_id}/json` | Snapshot: `{status, log, pdf_ready}` |
@@ -215,7 +216,7 @@ The extension uses `job_id='_'` for all archived-resume requests (from the outpu
 | GET | `/open/{job_id}` | Opens PDF with OS default viewer on the server machine |
 | GET | `/details/{job_id}` | Returns `parse_resume_tex()` result for the generated `.tex` |
 | POST | `/recompile/{job_id}` | Re-runs `compile_latex()`, updates job status, checks mtime |
-| DELETE | `/files/{job_id}` | Deletes `.tex`, `.pdf`, `_Resume.txt`, `_jd.txt` from disk |
+| DELETE | `/files/{job_id}` | Deletes `.tex`, `.pdf`, `_Resume.txt`, `_jd.txt`, and `job_details/{company}.json` from disk |
 
 ### `POST /generate` Form Fields
 
@@ -254,6 +255,7 @@ Checks that the PDF was actually updated (not just that the file exists), preven
 | `ExperienceEntry` | `company`, `tech_stack`, `dates`, `role`, `location`, `bullets: list[str]` |
 | `ProjectEntry` | `name`, `tech_stack`, `bullets: list[str]` |
 | `ResumeDetails` | `experience: list[ExperienceEntry]`, `projects: list[ProjectEntry]` |
+| `JobDetails` | `company_name`, `job_description`, `resume_name`, `master_resume_tex`, `method`, `location`, `use_constraints`, `use_projects`, `use_experience` |
 
 ---
 
@@ -346,6 +348,11 @@ Clears before and after each test. The post-test wait prevents worker threads fr
 | `/files` | `test_delete_files_removes_tex_and_pdf` | Both `.tex` and `.pdf` deleted from disk |
 | `/files` | `test_delete_files_with_company_fallback` | `job_id='_'` + `?company=X` fallback deletes files |
 | `/files` | `test_delete_files_returns_deleted_list` | Response `deleted` is a list of removed paths |
+| `/files` | `test_delete_files_also_removes_job_details_file` | `DELETE /files/{job_id}` also removes `output/job_details/{company}.json` |
+| `/generate` | `test_generate_writes_job_details_file` | `POST /generate` creates `output/job_details/{company}.json` |
+| `/generate` | `test_generate_job_details_contains_expected_fields` | Written JSON has all 9 fields matching the submitted form values |
+| `/job_details` | `test_job_details_returns_200_with_settings` | `GET /job_details/{company}` returns the stored JSON as a `JobDetails` response |
+| `/job_details` | `test_job_details_returns_404_for_unknown_company` | 404 when no file exists for the requested company |
 | `_replace_location` | `test_replace_location_replaces_in_center_block` | Pattern inside `\begin{center}...\end{center}` replaced |
 | `_replace_location` | `test_replace_location_no_center_block_returns_unchanged` | String unchanged when no center block present |
 | `_replace_location` | `test_replace_location_only_replaces_first_occurrence_in_center` | Only first `{City, ST, Country}` match replaced |

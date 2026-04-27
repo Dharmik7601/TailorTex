@@ -45,7 +45,7 @@ TailorTex/
 │
 ├── backend/tests/
 │   ├── conftest.py                    # shared fixtures: TestClient, mock_api_calls auto-mock
-│   ├── test_server.py                 # 54 tests — all API endpoints + edge cases
+│   ├── test_server.py                 # 62 tests — all API endpoints + edge cases
 │   ├── test_providers.py              # 31 tests — GeminiProvider, ClaudeCliProvider, registry
 │   ├── test_compiler.py               # 7 tests  — find_pdflatex(), compile_latex()
 │   ├── test_tex_parser.py             # 35 tests  — parse_resume_tex, clean_latex, format_resume_for_eval
@@ -56,7 +56,7 @@ TailorTex/
 │   │   ├── manifest.json              # Chrome MV3 manifest
 │   │   ├── background.js              # opens side panel on toolbar click
 │   │   ├── popup.html                 # side panel markup
-│   │   ├── popup.js                   # all extension logic: queue, SSE, output browser
+│   │   ├── popup.js                   # all extension logic: queue, SSE, output browser, retry
 │   │   └── popup.css                  # dark theme styles
 │   └── src/                           # React/Vite frontend (make serve-ui) — separate from extension
 │
@@ -77,7 +77,9 @@ TailorTex/
 │   └── change_tracker.json            # scoring ledger and rule history
 │
 ├── resumes/                           # source .tex files; all files listed by /resumes endpoint
-├── output/                            # generated .tex/.pdf (gitignored); extras/ for eval plain-text
+├── output/                            # generated .tex/.pdf (gitignored)
+│   ├── extras/                        # plain-text eval files written by ClaudeCliProvider
+│   └── job_details/                   # generation inputs stored per company for Retry
 ├── examples/                          # sample resume template and prompt files to copy from
 │
 └── docs/
@@ -92,7 +94,8 @@ TailorTex/
         ├── chrome-extension.md
         ├── slash-commands.md
         ├── feedback-loop.md
-        └── experience-bank.md
+        ├── experience-bank.md
+        └── retry-on-error.md
 ```
 
 ## Where to Look for a Task
@@ -110,6 +113,7 @@ Each feature file in `docs/features/` covers implementation details and the full
 | `slash-commands.md` | `/tailor-resume`, `/judge-resume`, `/optimize-prompt` — how each command reads and writes files |
 | `feedback-loop.md` | End-to-end flow: generation → evaluation → prompt optimization; `daily_feedback.json` lifecycle |
 | `experience-bank.md` | `experience_bank.txt` opt-in flag, `use_experience` in `build_prompts`, `/generate` endpoint, CLI `--experience` flag |
+| `retry-on-error.md` | Retry on Error — `GET /job_details/{company}` endpoint, `output/job_details/` file lifecycle, Retry button in extension |
 
 ## Environment Variables
 
@@ -134,6 +138,7 @@ Each feature file in `docs/features/` covers implementation details and the full
 | GET | `/resumes` | List `.tex` files in `resumes/` |
 | GET | `/locations` | List supported locations |
 | GET | `/output/resumes` | List archived resumes in `output/` (both `.tex` + `.pdf` present) |
+| GET | `/job_details/{company}` | Stored generation inputs for a company (used by Retry button) |
 | POST | `/generate` | Submit a generation job → `{"job_id": "..."}` |
 | GET | `/queue` | All in-memory jobs |
 | GET | `/status/{job_id}` | SSE stream of log lines + completion event |
@@ -142,4 +147,4 @@ Each feature file in `docs/features/` covers implementation details and the full
 | GET | `/download/{job_id}` | Serve PDF as download |
 | GET | `/details/{job_id}?company=X` | Parsed experience + projects from `.tex` |
 | POST | `/recompile/{job_id}?company=X` | Recompile `.tex` → PDF |
-| DELETE | `/files/{job_id}?company=X` | Delete `.tex`, `.pdf`, and extras files |
+| DELETE | `/files/{job_id}?company=X` | Delete `.tex`, `.pdf`, extras, and `job_details` files |

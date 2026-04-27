@@ -273,6 +273,7 @@ button:disabled { background: #555; cursor: not-allowed; }
 .job-open-btn,
 .job-details-btn,
 .job-recompile-btn,
+.job-retry-btn,
 .job-delete-btn {
   width: auto;
   padding: 5px 12px;
@@ -301,6 +302,13 @@ button:disabled { background: #555; cursor: not-allowed; }
 }
 .job-recompile-btn:hover:not(:disabled) { background: #3a2e00; }
 .job-recompile-btn:disabled { background: #1a1a1a; color: #666; border-color: #333; cursor: not-allowed; }
+.job-retry-btn {
+  background: #2a1200;
+  color: #ff6d00;
+  border: 1px solid #4a2200;
+}
+.job-retry-btn:hover:not(:disabled) { background: #3a1800; }
+.job-retry-btn:disabled { background: #1a1a1a; color: #666; border-color: #333; cursor: not-allowed; }
 .job-delete-btn {
   background: #2a0000;
   color: #f44336;

@@ -168,6 +168,24 @@ Several endpoints (`/open`, `/details`, `/recompile`, `/files`) accept both a `j
 
 This makes all endpoints work after server restart, using `output/{company}_Resume.{ext}` as the deterministic path.
 
+### Retry on Error — Job Details Persistence
+
+When `POST /generate` is called, all generation inputs are persisted to
+`output/job_details/{company_name}.json` before the job is enqueued. This file survives server
+restarts, browser/extension resets, and is independent of the in-memory job store.
+
+`GET /job_details/{company}` reads and returns this file as a `JobDetails` response. The
+Chrome extension's Retry button calls this endpoint on an error card, then re-submits the same
+inputs to `/generate` as a new job.
+
+`DELETE /files/{job_id}` also removes `output/job_details/{company_name}.json` so no orphaned
+details files are left behind after a resume is fully deleted.
+
+If the original submission used a named resume (`resume_name` starts with `resumes/`), the retry
+re-uses `resume_name` and the server re-reads from disk — picking up any edits made since the
+original submission. If the original submission used a file upload, `master_resume_tex` content
+is stored in the JSON and sent as a file blob on retry.
+
 ### Provider Registry Pattern
 
 ```
@@ -355,3 +373,17 @@ Deferred: for the current single-user local use case, in-memory is sufficient. T
 
 ### Full LaTeX re-generation vs. section-level edits
 The system sends the full resume body to the LLM and replaces the entire body in one shot. Section-level diffing was considered but rejected: LaTeX section coupling (page budget, skill consistency across sections) makes isolated edits unreliable. Full-body generation lets the LLM reason about page fit holistically.
+
+### Retry persistence: server-side file vs. extension storage vs. hybrid
+
+For storing generation inputs to support the Retry button, three options were considered:
+
+- **Server-side `output/job_details/{company}.json`** *(chosen)*: persists across browser
+  restarts, extension reinstalls, and `chrome.storage.local` clears. Consistent with how other
+  output files already live in `output/`. One extra HTTP round-trip on retry is negligible.
+
+- **Extension `chrome.storage.local` only**: no file I/O, no round-trip, instant retry. Lost
+  if extension is uninstalled or storage cleared. Rejected because server-side durability is
+  better for a tool where the user may switch browsers or reinstall the extension.
+
+- **Hybrid (both)**: redundant for a single-user local tool. Rejected as over-engineered.

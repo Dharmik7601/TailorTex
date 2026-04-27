@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import queue
 import re
@@ -14,7 +15,7 @@ from fastapi import FastAPI, Form, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 
-from api.schemas import GenerateResponse, JobStatus, QueueItem, QueueResponse, ResumeDetails
+from api.schemas import GenerateResponse, JobDetails, JobStatus, QueueItem, QueueResponse, ResumeDetails
 from core.prompt_pipeline import build_prompts
 from core.providers import GenerationRequest, get_provider, registered_provider_ids
 from core.tex_parser import parse_resume_tex
@@ -142,6 +143,16 @@ def list_output_resumes():
     return {"resumes": valid}
 
 
+@app.get("/job_details/{company}", response_model=JobDetails)
+def get_job_details(company: str):
+    """Return the stored generation inputs for a company, used by the Retry button."""
+    details_path = os.path.join(BASE_DIR, "output", "job_details", f"{company}.json")
+    if not os.path.exists(details_path):
+        raise HTTPException(status_code=404, detail=f"No saved job details for '{company}'")
+    with open(details_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 @app.post("/generate", response_model=GenerateResponse)
 async def generate(
     job_description: str = Form(...),
@@ -170,6 +181,21 @@ async def generate(
         master_resume_tex = contents.decode("utf-8")
     else:
         raise HTTPException(status_code=400, detail="Provide either resume_name or resume_file.")
+
+    # Persist generation inputs so the user can retry after a failure
+    job_details_dir = os.path.join(BASE_DIR, "output", "job_details")
+    os.makedirs(job_details_dir, exist_ok=True)
+    with open(os.path.join(job_details_dir, f"{company_name}.json"), "w", encoding="utf-8") as _f:
+        json.dump({
+            "company_name": company_name,
+            "job_description": job_description,
+            "resume_name": resume_name or "",
+            "method": method,
+            "location": location,
+            "use_constraints": use_constraints,
+            "use_projects": use_projects,
+            "use_experience": use_experience,
+        }, _f, indent=2)
 
     # Capacity check: max 5 concurrent active jobs
     active = sum(1 for j in jobs.values() if j["status"] in ("queued", "running"))
@@ -440,6 +466,11 @@ def delete_files(job_id: str, company: Optional[str] = None):
         if os.path.exists(path):
             os.remove(path)
             deleted.append(path)
+
+    details_path = os.path.join(BASE_DIR, "output", "job_details", f"{company_name}.json")
+    if os.path.exists(details_path):
+        os.remove(details_path)
+        deleted.append(details_path)
 
     return {"deleted": deleted}
 

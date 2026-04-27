@@ -43,3 +43,14 @@ class ProjectEntry(BaseModel):
 class ResumeDetails(BaseModel):
     experience: list[ExperienceEntry]
     projects: list[ProjectEntry]
+
+
+class JobDetails(BaseModel):
+    company_name: str
+    job_description: str
+    resume_name: str
+    method: str
+    location: str
+    use_constraints: bool
+    use_projects: bool
+    use_experience: bool

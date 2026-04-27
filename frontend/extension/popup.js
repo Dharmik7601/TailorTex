@@ -224,12 +224,21 @@ function createActionsDiv(job, card) {
   recompileBtn.textContent = 'Recompile';
   recompileBtn.addEventListener('click', () => recompileJob(job, card));
 
+  actions.appendChild(recompileBtn);
+
+  if (job.status === 'error') {
+    const retryBtn = document.createElement('button');
+    retryBtn.className = 'job-retry-btn';
+    retryBtn.textContent = 'Retry';
+    retryBtn.addEventListener('click', () => retryJob(job));
+    actions.appendChild(retryBtn);
+  }
+
   const deleteBtn = document.createElement('button');
   deleteBtn.className = 'job-delete-btn';
   deleteBtn.textContent = 'Delete';
   deleteBtn.addEventListener('click', () => deleteJobFiles(job));
 
-  actions.appendChild(recompileBtn);
   actions.appendChild(deleteBtn);
 
   return actions;
@@ -602,6 +611,79 @@ async function recompileJob(job, card) {
   }
 }
 
+// ── Retry a failed job using stored generation inputs ────────────────────────
+async function retryJob(job) {
+  const card = document.querySelector(`.job-card[data-job-id="${job.job_id}"]`);
+  const btn = card ? card.querySelector('.job-retry-btn') : null;
+  if (btn) { btn.disabled = true; btn.textContent = 'Retrying…'; }
+
+  let details;
+  try {
+    const r = await fetch(`${API}/job_details/${encodeURIComponent(job.company)}`);
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      alert('Could not load saved settings:\n' + (d.detail || r.statusText));
+      if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+      return;
+    }
+    details = await r.json();
+  } catch (e) {
+    alert('Could not load saved settings: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+    return;
+  }
+
+  if (!details.resume_name || !details.resume_name.startsWith('resumes/')) {
+    const reason = 'Retry unavailable: this job was submitted with an uploaded resume. To retry, resubmit the job manually.';
+    const allJobs = await getJobs();
+    const stored = allJobs.find(j => j.job_id === job.job_id);
+    const updatedLog = [...(stored?.log || []), `[retry] ${reason}`];
+    await updateJobStatus(job.job_id, { log: updatedLog });
+    if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+    alert(reason);
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('company_name',    details.company_name);
+  fd.append('job_description', details.job_description);
+  fd.append('method',          details.method);
+  fd.append('location',        details.location);
+  fd.append('use_constraints', details.use_constraints);
+  fd.append('use_projects',    details.use_projects);
+  fd.append('use_experience',  details.use_experience);
+  fd.append('resume_name',     details.resume_name);
+
+  let newJobId;
+  try {
+    const r = await fetch(`${API}/generate`, { method: 'POST', body: fd });
+    if (r.status === 429) {
+      const d = await r.json();
+      alert(d.detail || 'Queue full. Please wait for a slot.');
+      if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+      return;
+    }
+    if (!r.ok) throw new Error(`Server responded ${r.status}`);
+    newJobId = (await r.json()).job_id;
+  } catch (e) {
+    alert('Retry failed: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+    return;
+  }
+
+  await addJob({
+    job_id: newJobId,
+    company: details.company_name,
+    resume_name: details.resume_name || 'uploaded',
+    method: details.method,
+    status: 'queued',
+    submitted_at: Date.now(),
+    log: [],
+  });
+
+  if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+}
+
 // ── Delete a job's output files from disk and remove card ─────────────────────
 async function deleteJobFiles(job) {
   try {
@@ -818,7 +900,7 @@ if (typeof module !== 'undefined') {
   module.exports = {
     renderQueue, attachSSE, createJobCard, patchJobCard, updateSlotCounter,
     getJobs, saveJobs, escHtml, logCache, sseMap,
-    createActionsDiv, recompileJob, deleteJobFiles,
+    createActionsDiv, recompileJob, deleteJobFiles, retryJob,
     loadLocations, showOutputBrowser, hideOutputBrowser, loadOutputResumes, createOutputResumeCard,
   };
 }

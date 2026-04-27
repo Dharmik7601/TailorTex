@@ -996,3 +996,184 @@ def test_generate_defaults_use_experience_to_false(client, master_resume_name, t
         done_event.wait(timeout=5)
 
     assert captured.get("use_experience") is False
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Retry on Error — job_details persistence
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _setup_tmp_resume(tmp_path):
+    """Create a minimal resume in tmp_path/resumes/ and return its relative name."""
+    resumes_dir = tmp_path / "resumes"
+    resumes_dir.mkdir(exist_ok=True)
+    (resumes_dir / "test_resume.tex").write_text(
+        r"\documentclass{article}\begin{document}"
+        r"\begin{center}Test User \\ {Rochester, NY, USA}\end{center}"
+        r"\end{document}"
+    )
+    return "resumes/test_resume.tex"
+
+
+def test_generate_writes_job_details_file(client, tmp_path, monkeypatch):
+    """POST /generate must create output/job_details/{company}.json."""
+    import api.server as server_module
+    monkeypatch.setattr(server_module, "BASE_DIR", str(tmp_path))
+    resume_name = _setup_tmp_resume(tmp_path)
+
+    r = client.post("/generate", data={
+        "job_description": "Test JD",
+        "company_name": "RetryTestCo",
+        "resume_name": resume_name,
+        "method": "gemini",
+        "location": "Rochester, NY, USA",
+    })
+    assert r.status_code == 200
+
+    details_path = tmp_path / "output" / "job_details" / "RetryTestCo.json"
+    assert details_path.exists(), "output/job_details/RetryTestCo.json was not created"
+
+
+def test_generate_job_details_contains_expected_fields(client, tmp_path, monkeypatch):
+    """The written JSON must contain all 9 fields with the exact values submitted."""
+    import json
+    import api.server as server_module
+    monkeypatch.setattr(server_module, "BASE_DIR", str(tmp_path))
+    resume_name = _setup_tmp_resume(tmp_path)
+
+    r = client.post("/generate", data={
+        "job_description": "Senior Software Engineer role",
+        "company_name": "FieldCheckCo",
+        "resume_name": resume_name,
+        "method": "gemini",
+        "location": "San Jose, CA, USA",
+        "use_constraints": "true",
+        "use_projects": "true",
+        "use_experience": "true",
+    })
+    assert r.status_code == 200
+
+    details_path = tmp_path / "output" / "job_details" / "FieldCheckCo.json"
+    with open(details_path, encoding="utf-8") as f:
+        data = json.load(f)
+
+    assert data["company_name"] == "FieldCheckCo"
+    assert data["job_description"] == "Senior Software Engineer role"
+    assert data["resume_name"] == resume_name
+    assert data["method"] == "gemini"
+    assert data["location"] == "San Jose, CA, USA"
+    assert data["use_constraints"] is True
+    assert data["use_projects"] is True
+    assert data["use_experience"] is True
+    assert "master_resume_tex" not in data
+
+
+def test_job_details_returns_200_with_settings(client, tmp_path, monkeypatch):
+    """GET /job_details/{company} returns the stored JSON as a JobDetails response."""
+    import json
+    import api.server as server_module
+    monkeypatch.setattr(server_module, "BASE_DIR", str(tmp_path))
+
+    details_dir = tmp_path / "output" / "job_details"
+    details_dir.mkdir(parents=True)
+    stored = {
+        "company_name": "Google",
+        "job_description": "SWE role",
+        "resume_name": "resumes/master_resume.tex",
+        "method": "gemini",
+        "location": "San Jose, CA, USA",
+        "use_constraints": True,
+        "use_projects": False,
+        "use_experience": True,
+    }
+    (details_dir / "Google.json").write_text(json.dumps(stored), encoding="utf-8")
+
+    r = client.get("/job_details/Google")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["company_name"] == "Google"
+    assert body["job_description"] == "SWE role"
+    assert body["method"] == "gemini"
+    assert body["use_constraints"] is True
+    assert body["use_experience"] is True
+    assert body["use_projects"] is False
+
+
+def test_job_details_returns_404_for_unknown_company(client, tmp_path, monkeypatch):
+    """GET /job_details/{company} returns 404 when no file exists for the company."""
+    import api.server as server_module
+    monkeypatch.setattr(server_module, "BASE_DIR", str(tmp_path))
+    (tmp_path / "output" / "job_details").mkdir(parents=True)
+
+    r = client.get("/job_details/NonExistent")
+    assert r.status_code == 404
+
+
+def test_delete_files_also_removes_job_details_file(client, tmp_path, monkeypatch):
+    """DELETE /files/{job_id} must also remove output/job_details/{company}.json."""
+    import json
+    import api.server as server_module
+    monkeypatch.setattr(server_module, "BASE_DIR", str(tmp_path))
+
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    (output_dir / "extras").mkdir()
+    details_dir = output_dir / "job_details"
+    details_dir.mkdir()
+
+    tex = output_dir / "DeleteMe_Resume.tex"
+    pdf = output_dir / "DeleteMe_Resume.pdf"
+    tex.write_text(r"\begin{document}\end{document}")
+    pdf.write_bytes(b"%PDF")
+
+    details_file = details_dir / "DeleteMe.json"
+    details_file.write_text(json.dumps({"company_name": "DeleteMe"}), encoding="utf-8")
+
+    job_id = "delete-with-details"
+    jobs[job_id] = {
+        "status": "completed", "log": [], "pdf_path": str(pdf),
+        "company_name": "DeleteMe", "resume_name": "resumes/master_resume.tex", "method": "gemini",
+    }
+
+    r = client.delete(f"/files/{job_id}")
+    assert r.status_code == 200
+    assert not details_file.exists(), "output/job_details/DeleteMe.json was not deleted"
+
+
+def test_delete_files_removes_job_details_archived_resume(client, tmp_path, monkeypatch):
+    """DELETE /files/_?company=X (output browser path) must also remove job_details/X.json."""
+    import json
+    import api.server as server_module
+    monkeypatch.setattr(server_module, "BASE_DIR", str(tmp_path))
+
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    (output_dir / "extras").mkdir()
+    details_dir = output_dir / "job_details"
+    details_dir.mkdir()
+
+    details_file = details_dir / "Archived.json"
+    details_file.write_text(json.dumps({"company_name": "Archived"}), encoding="utf-8")
+
+    r = client.delete("/files/_?company=Archived")
+    assert r.status_code == 200
+    assert not details_file.exists(), "output/job_details/Archived.json was not deleted"
+
+
+def test_delete_files_removes_job_details_stale_job_id(client, tmp_path, monkeypatch):
+    """DELETE /files/{stale_id}?company=X (post-restart, job not in memory) must also remove job_details/X.json."""
+    import json
+    import api.server as server_module
+    monkeypatch.setattr(server_module, "BASE_DIR", str(tmp_path))
+
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    (output_dir / "extras").mkdir()
+    details_dir = output_dir / "job_details"
+    details_dir.mkdir()
+
+    details_file = details_dir / "StaleCompany.json"
+    details_file.write_text(json.dumps({"company_name": "StaleCompany"}), encoding="utf-8")
+
+    r = client.delete("/files/stale-job-id-not-in-memory?company=StaleCompany")
+    assert r.status_code == 200
+    assert not details_file.exists(), "output/job_details/StaleCompany.json was not deleted"
