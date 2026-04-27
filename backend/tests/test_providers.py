@@ -437,6 +437,18 @@ class TestClaudeCliProviderGenerate:
         assert result.tex_path.endswith("Acme_Resume.tex")
         assert result.pdf_path.endswith("Acme_Resume.pdf")
 
+    @patch("core.providers.claude_cli.subprocess.run")
+    def test_empty_stderr_on_nonzero_exit_uses_fallback_message(self, mock_run, tmp_path, monkeypatch):
+        import core.providers.claude_cli as cli_module
+        monkeypatch.setattr(cli_module, "BASE_DIR", str(tmp_path))
+        (tmp_path / "output").mkdir()
+
+        # returncode=1, stderr="" → should use fallback message
+        mock_run.return_value = self._make_subprocess_result(returncode=1, stderr="")
+
+        with pytest.raises(RuntimeError, match="claude -p exited with non-zero status"):
+            ClaudeCliProvider().generate(_make_request())
+
     @patch("core.providers.claude_cli.compile_latex")
     @patch("core.providers.claude_cli.subprocess.run")
     def test_logs_subprocess_stdout(self, mock_run, mock_compile, tmp_path, monkeypatch):

@@ -16,6 +16,7 @@ def main():
     parser.add_argument("--prompt", default="prompts/system_prompt.txt", help="Path to the system prompt file")
     parser.add_argument("--constraints", action="store_true", help="Include user_constraints.txt in the prompt")
     parser.add_argument("--projects", action="store_true", help="Include additional_projects.txt in the prompt")
+    parser.add_argument("--experience", action="store_true", help="Include experience_bank.txt in the prompt")
 
     args = parser.parse_args()
 
@@ -77,6 +78,17 @@ def main():
             system_prompt += f"\n\n{projects_text}\n"
         else:
             print(f"Warning: --projects flag was used, but {projects_path} was not found.")
+
+    # Conditionally append experience bank
+    # NOTE: experience file already contains its own <experience_bank> XML tags
+    if args.experience:
+        experience_path = "prompts/experience_bank.txt"
+        if os.path.exists(experience_path):
+            with open(experience_path, 'r', encoding='utf-8') as f:
+                experience_text = f.read()
+            system_prompt += f"\n\n{experience_text}\n"
+        else:
+            print(f"Warning: --experience flag was used, but {experience_path} was not found.")
 
     # Phase 2: Prompt Assembly
     # ORDER MATTERS — resume body first (bulk data, lower attention zone),

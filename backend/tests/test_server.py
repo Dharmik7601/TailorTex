@@ -448,6 +448,344 @@ def test_full_generate_flow_completes_successfully(client, master_resume_name, t
         assert mock_provider.generate.called
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# GET /locations
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_locations_returns_200_with_list(client):
+    r = client.get("/locations")
+    assert r.status_code == 200
+    assert "locations" in r.json()
+    assert isinstance(r.json()["locations"], list)
+
+
+def test_locations_all_strings(client):
+    for loc in client.get("/locations").json()["locations"]:
+        assert isinstance(loc, str) and len(loc) > 0
+
+
+def test_locations_contains_default_location(client):
+    assert "Rochester, NY, USA" in client.get("/locations").json()["locations"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GET /output/resumes
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_output_resumes_empty_when_no_pairs(client, tmp_path, monkeypatch):
+    import api.server as server_module
+    monkeypatch.setattr(server_module, "BASE_DIR", str(tmp_path))
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    # Only a PDF, no matching .tex
+    (output_dir / "Solo_Resume.pdf").write_bytes(b"%PDF")
+
+    r = client.get("/output/resumes")
+    assert r.status_code == 200
+    assert r.json()["resumes"] == []
+
+
+def test_output_resumes_only_includes_full_pairs(client, tmp_path, monkeypatch):
+    import api.server as server_module
+    monkeypatch.setattr(server_module, "BASE_DIR", str(tmp_path))
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    # Full pair — should be included
+    (output_dir / "Google_Resume.pdf").write_bytes(b"%PDF")
+    (output_dir / "Google_Resume.tex").write_text(r"\begin{document}\end{document}")
+    # PDF-only — should be excluded
+    (output_dir / "Orphan_Resume.pdf").write_bytes(b"%PDF")
+
+    r = client.get("/output/resumes")
+    companies = [e["company"] for e in r.json()["resumes"]]
+    assert "Google" in companies
+    assert "Orphan" not in companies
+
+
+def test_output_resumes_returns_company_key(client, tmp_path, monkeypatch):
+    import api.server as server_module
+    monkeypatch.setattr(server_module, "BASE_DIR", str(tmp_path))
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    (output_dir / "Meta_Resume.pdf").write_bytes(b"%PDF")
+    (output_dir / "Meta_Resume.tex").write_text(r"\begin{document}\end{document}")
+
+    r = client.get("/output/resumes")
+    assert len(r.json()["resumes"]) == 1
+    assert r.json()["resumes"][0]["company"] == "Meta"
+
+
+def test_output_resumes_returns_200_when_output_dir_missing(client, tmp_path, monkeypatch):
+    import api.server as server_module
+    monkeypatch.setattr(server_module, "BASE_DIR", str(tmp_path))
+    # No output/ dir created
+
+    r = client.get("/output/resumes")
+    assert r.status_code == 200
+    assert r.json()["resumes"] == []
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# POST /generate — resume_file upload
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_generate_with_resume_file_upload(client):
+    tex_content = r"\documentclass{article}\begin{document}body\end{document}"
+    r = client.post(
+        "/generate",
+        data={"job_description": "JD", "company_name": "UploadCo"},
+        files={"resume_file": ("uploaded.tex", tex_content.encode(), "text/plain")},
+    )
+    assert r.status_code == 200
+    assert "job_id" in r.json()
+    assert len(r.json()["job_id"]) > 0
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GET /download — PDF missing on disk
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_download_completed_job_missing_pdf_on_disk_returns_404(client, tmp_path):
+    job_id = "download-missing-pdf"
+    jobs[job_id] = {
+        "status": "completed",
+        "log": [],
+        "pdf_path": str(tmp_path / "Ghost_Resume.pdf"),  # file never created
+        "company_name": "Ghost",
+        "resume_name": "resumes/master_resume.tex",
+        "method": "gemini",
+    }
+    assert client.get(f"/download/{job_id}").status_code == 404
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GET /open — company fallback and PDF missing on disk
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_open_with_company_fallback_opens_archived_resume(client, tmp_path, monkeypatch):
+    import api.server as server_module
+    monkeypatch.setattr(server_module, "BASE_DIR", str(tmp_path))
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    pdf = output_dir / "Archived_Resume.pdf"
+    pdf.write_bytes(b"%PDF")
+
+    # job_id='_' is not in jobs → triggers company param fallback
+    r = client.get("/open/_?company=Archived")
+    assert r.status_code == 200
+    assert r.json()["status"] == "opened"
+
+
+def test_open_pdf_missing_on_disk_returns_404(client, tmp_path):
+    job_id = "open-no-file"
+    jobs[job_id] = {
+        "status": "completed",
+        "log": [],
+        "pdf_path": str(tmp_path / "Gone_Resume.pdf"),  # file never created
+        "company_name": "Gone",
+        "resume_name": "resumes/master_resume.tex",
+        "method": "gemini",
+    }
+    assert client.get(f"/open/{job_id}").status_code == 404
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GET /details — company fallback and tex missing on disk
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_details_with_company_fallback_returns_data(client, tmp_path, monkeypatch):
+    import api.server as server_module
+    monkeypatch.setattr(server_module, "BASE_DIR", str(tmp_path))
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    # Write real master resume content so parse_resume_tex returns valid data
+    with open(MASTER_RESUME_PATH, "r", encoding="utf-8") as f:
+        tex_content = f.read()
+    (output_dir / "Fallback_Resume.tex").write_text(tex_content, encoding="utf-8")
+
+    r = client.get("/details/_?company=Fallback")
+    assert r.status_code == 200
+    assert "experience" in r.json()
+    assert "projects" in r.json()
+
+
+def test_details_tex_missing_on_disk_returns_404(client, tmp_path, monkeypatch):
+    import api.server as server_module
+    monkeypatch.setattr(server_module, "BASE_DIR", str(tmp_path))
+    (tmp_path / "output").mkdir()
+    # .tex file never created
+
+    r = client.get("/details/_?company=NoTex")
+    assert r.status_code == 404
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# POST /recompile — company fallback and PDF unchanged
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_recompile_with_company_fallback_succeeds(client, tmp_path, monkeypatch):
+    import time as _time
+    import api.server as server_module
+    monkeypatch.setattr(server_module, "BASE_DIR", str(tmp_path))
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    tex = output_dir / "FallbackCo_Resume.tex"
+    pdf = output_dir / "FallbackCo_Resume.pdf"
+    tex.write_text(r"\documentclass{article}\begin{document}hi\end{document}")
+    pdf.write_bytes(b"%PDF-1.4 old")
+
+    def fake_compile(tex_path, output_dir, log_callback=None):
+        _time.sleep(0.05)
+        pdf.write_bytes(b"%PDF-1.4 new")
+
+    with patch("core.compiler.compile_latex", fake_compile):
+        r = client.post("/recompile/_?company=FallbackCo")
+
+    assert r.status_code == 200
+    assert r.json()["status"] == "completed"
+
+
+def test_recompile_pdf_unchanged_after_compile_returns_500(client, tmp_path):
+    tex = tmp_path / "Stale_Resume.tex"
+    pdf = tmp_path / "Stale_Resume.pdf"
+    tex.write_text(r"\documentclass{article}\begin{document}hi\end{document}")
+    pdf.write_bytes(b"%PDF-1.4 old")
+
+    job_id = "recompile-stale-pdf"
+    jobs[job_id] = {
+        "status": "completed",
+        "log": [],
+        "pdf_path": str(pdf),
+        "company_name": "Stale",
+        "resume_name": "resumes/master_resume.tex",
+        "method": "gemini",
+    }
+
+    def no_op_compile(tex_path, output_dir, log_callback=None):
+        # Deliberately do NOT update the PDF — mtime stays the same
+        pass
+
+    with patch("core.compiler.compile_latex", no_op_compile):
+        r = client.post(f"/recompile/{job_id}")
+
+    assert r.status_code == 500
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DELETE /files/{job_id}
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_delete_files_unknown_job_without_company_returns_404(client):
+    assert client.delete("/files/no-such-id").status_code == 404
+
+
+def test_delete_files_removes_tex_and_pdf(client, tmp_path, monkeypatch):
+    import api.server as server_module
+    monkeypatch.setattr(server_module, "BASE_DIR", str(tmp_path))
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    (tmp_path / "output" / "extras").mkdir()
+
+    tex = output_dir / "Acme_Resume.tex"
+    pdf = output_dir / "Acme_Resume.pdf"
+    tex.write_text(r"\begin{document}\end{document}")
+    pdf.write_bytes(b"%PDF")
+
+    job_id = "delete-test-job"
+    jobs[job_id] = {
+        "status": "completed", "log": [], "pdf_path": str(pdf),
+        "company_name": "Acme", "resume_name": "resumes/master_resume.tex", "method": "gemini",
+    }
+
+    r = client.delete(f"/files/{job_id}")
+    assert r.status_code == 200
+    assert not tex.exists()
+    assert not pdf.exists()
+
+
+def test_delete_files_with_company_fallback(client, tmp_path, monkeypatch):
+    import api.server as server_module
+    monkeypatch.setattr(server_module, "BASE_DIR", str(tmp_path))
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    (tmp_path / "output" / "extras").mkdir()
+
+    tex = output_dir / "Legacy_Resume.tex"
+    pdf = output_dir / "Legacy_Resume.pdf"
+    tex.write_text(r"\begin{document}\end{document}")
+    pdf.write_bytes(b"%PDF")
+
+    # job_id='_' not in jobs — triggers company param fallback
+    r = client.delete("/files/_?company=Legacy")
+    assert r.status_code == 200
+    assert not tex.exists()
+    assert not pdf.exists()
+
+
+def test_delete_files_returns_deleted_list(client, tmp_path, monkeypatch):
+    import api.server as server_module
+    monkeypatch.setattr(server_module, "BASE_DIR", str(tmp_path))
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    (tmp_path / "output" / "extras").mkdir()
+
+    tex = output_dir / "ListCo_Resume.tex"
+    pdf = output_dir / "ListCo_Resume.pdf"
+    tex.write_text(r"\begin{document}\end{document}")
+    pdf.write_bytes(b"%PDF")
+
+    job_id = "delete-list-test"
+    jobs[job_id] = {
+        "status": "completed", "log": [], "pdf_path": str(pdf),
+        "company_name": "ListCo", "resume_name": "resumes/master_resume.tex", "method": "gemini",
+    }
+
+    r = client.delete(f"/files/{job_id}")
+    assert r.status_code == 200
+    deleted = r.json()["deleted"]
+    assert isinstance(deleted, list)
+    assert any("ListCo_Resume.tex" in p for p in deleted)
+    assert any("ListCo_Resume.pdf" in p for p in deleted)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# _replace_location unit tests
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_replace_location_replaces_in_center_block():
+    from api.server import _replace_location
+    tex = r"""
+\begin{center}
+John Doe \\ {Rochester, NY, USA}
+\end{center}
+"""
+    result = _replace_location(tex, "San Jose, CA, USA")
+    assert "{San Jose, CA, USA}" in result
+    assert "{Rochester, NY, USA}" not in result
+
+
+def test_replace_location_no_center_block_returns_unchanged():
+    from api.server import _replace_location
+    tex = r"\section{Experience}\resumeItem{Did something in {Rochester, NY, USA}}"
+    result = _replace_location(tex, "San Jose, CA, USA")
+    assert result == tex
+
+
+def test_replace_location_only_replaces_first_occurrence_in_center():
+    from api.server import _replace_location
+    # Two {City, ST, Country} patterns inside center block — only first should change
+    tex = r"""
+\begin{center}
+{Rochester, NY, USA} and also {Austin, TX, USA}
+\end{center}
+"""
+    result = _replace_location(tex, "Seattle, WA, USA")
+    assert "{Seattle, WA, USA}" in result
+    # Second pattern should remain untouched
+    assert "{Austin, TX, USA}" in result
+
+
 def test_full_generate_flow_records_error_on_provider_failure(client, master_resume_name):
     """If the provider raises, the job must transition to 'error' with traceback in log."""
     done_event = threading.Event()
@@ -584,3 +922,77 @@ def test_full_generate_flow_claudecli_method(client, master_resume_name, tmp_pat
             time.sleep(0.1)
 
         assert status == "completed"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# POST /generate — use_experience flag threading
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_generate_passes_use_experience_true_to_build_prompts(client, master_resume_name, tmp_path):
+    """use_experience=True sent by client must reach build_prompts as use_experience=True."""
+    tex_path = str(tmp_path / "Acme_Resume.tex")
+    pdf_path = str(tmp_path / "Acme_Resume.pdf")
+    with open(tex_path, "w") as f:
+        f.write(r"\begin{document}\end{document}")
+    with open(pdf_path, "wb") as f:
+        f.write(b"%PDF")
+
+    done_event = threading.Event()
+    captured = {}
+
+    def fake_build_prompts(**kwargs):
+        captured.update(kwargs)
+        done_event.set()
+        return _mock_pipeline_output()
+
+    mock_provider = MagicMock()
+    mock_provider.generate.return_value = GenerationResult(tex_path=tex_path, pdf_path=pdf_path)
+
+    with patch("api.server.build_prompts", side_effect=fake_build_prompts), \
+         patch("api.server.get_provider", return_value=mock_provider), \
+         patch("api.server.os.startfile", create=True):
+
+        r = client.post("/generate", data={
+            "job_description": "JD", "company_name": "Acme",
+            "resume_name": master_resume_name,
+            "use_experience": "true",
+        })
+        assert r.status_code == 200
+        done_event.wait(timeout=5)
+
+    assert captured.get("use_experience") is True
+
+
+def test_generate_defaults_use_experience_to_false(client, master_resume_name, tmp_path):
+    """When use_experience is not sent, build_prompts must receive use_experience=False."""
+    tex_path = str(tmp_path / "Acme_Resume.tex")
+    pdf_path = str(tmp_path / "Acme_Resume.pdf")
+    with open(tex_path, "w") as f:
+        f.write(r"\begin{document}\end{document}")
+    with open(pdf_path, "wb") as f:
+        f.write(b"%PDF")
+
+    done_event = threading.Event()
+    captured = {}
+
+    def fake_build_prompts(**kwargs):
+        captured.update(kwargs)
+        done_event.set()
+        return _mock_pipeline_output()
+
+    mock_provider = MagicMock()
+    mock_provider.generate.return_value = GenerationResult(tex_path=tex_path, pdf_path=pdf_path)
+
+    with patch("api.server.build_prompts", side_effect=fake_build_prompts), \
+         patch("api.server.get_provider", return_value=mock_provider), \
+         patch("api.server.os.startfile", create=True):
+
+        r = client.post("/generate", data={
+            "job_description": "JD", "company_name": "Acme",
+            "resume_name": master_resume_name,
+            # use_experience intentionally omitted
+        })
+        assert r.status_code == 200
+        done_event.wait(timeout=5)
+
+    assert captured.get("use_experience") is False

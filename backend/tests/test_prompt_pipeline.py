@@ -32,7 +32,7 @@ MINIMAL_TEX = r"""
 JD = "Looking for a Python engineer with 3 years of experience."
 
 
-def _make_prompt_dir(tmp_path, system="You are a resume writer.", constraints=None, projects=None):
+def _make_prompt_dir(tmp_path, system="You are a resume writer.", constraints=None, projects=None, experience=None):
     """Create a prompts/ directory under tmp_path with the given file contents."""
     prompts = tmp_path / "prompts"
     prompts.mkdir()
@@ -41,6 +41,8 @@ def _make_prompt_dir(tmp_path, system="You are a resume writer.", constraints=No
         (prompts / "user_constraints.txt").write_text(constraints, encoding="utf-8")
     if projects is not None:
         (prompts / "additional_projects.txt").write_text(projects, encoding="utf-8")
+    if experience is not None:
+        (prompts / "experience_bank.txt").write_text(experience, encoding="utf-8")
     return prompts
 
 
@@ -276,3 +278,47 @@ def test_validate_latex_raises_on_missing_end_document():
 def test_validate_latex_raises_on_empty_string():
     with pytest.raises(ValueError):
         validate_latex("")
+
+
+# ── build_prompts: experience bank ───────────────────────────────────────────
+
+def test_build_prompts_appends_experience_when_enabled(tmp_path, monkeypatch):
+    _make_prompt_dir(tmp_path, experience="<experience_bank>Senior SWE role</experience_bank>")
+    monkeypatch.setattr(pipeline_module, "BASE_DIR", str(tmp_path))
+
+    result = build_prompts(MINIMAL_TEX, JD, use_constraints=False, use_projects=False, use_experience=True)
+
+    assert "Senior SWE role" in result.system_prompt
+
+
+def test_build_prompts_skips_experience_when_disabled(tmp_path, monkeypatch):
+    _make_prompt_dir(tmp_path, experience="<experience_bank>Senior SWE role</experience_bank>")
+    monkeypatch.setattr(pipeline_module, "BASE_DIR", str(tmp_path))
+
+    result = build_prompts(MINIMAL_TEX, JD, use_constraints=False, use_projects=False, use_experience=False)
+
+    assert "Senior SWE role" not in result.system_prompt
+
+
+def test_build_prompts_warns_when_experience_file_missing(tmp_path, monkeypatch):
+    _make_prompt_dir(tmp_path)  # no experience_bank.txt
+    monkeypatch.setattr(pipeline_module, "BASE_DIR", str(tmp_path))
+
+    logs = []
+    build_prompts(MINIMAL_TEX, JD, use_constraints=False, use_projects=False, use_experience=True, log=logs.append)
+
+    assert any("experience_bank.txt" in msg for msg in logs)
+
+
+def test_build_prompts_experience_and_projects_both_appended(tmp_path, monkeypatch):
+    _make_prompt_dir(
+        tmp_path,
+        projects="<project_bank>Side project</project_bank>",
+        experience="<experience_bank>Lead engineer</experience_bank>",
+    )
+    monkeypatch.setattr(pipeline_module, "BASE_DIR", str(tmp_path))
+
+    result = build_prompts(MINIMAL_TEX, JD, use_constraints=False, use_projects=True, use_experience=True)
+
+    assert "Side project" in result.system_prompt
+    assert "Lead engineer" in result.system_prompt

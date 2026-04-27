@@ -19,6 +19,7 @@ def build_prompts(
     job_description: str,
     use_constraints: bool = True,
     use_projects: bool = True,
+    use_experience: bool = True,
     log: Optional[Callable[[str], None]] = None,
 ) -> PipelineOutput:
     """
@@ -61,6 +62,16 @@ def build_prompts(
                 system_prompt += f"\n\n{f.read()}\n"
         else:
             log("Warning: additional_projects.txt not found, skipping.")
+
+    # Conditionally append experience bank
+    # NOTE: experience file already contains its own <experience_bank> XML tags
+    if use_experience:
+        experience_path = os.path.join(BASE_DIR, "prompts", "experience_bank.txt")
+        if os.path.exists(experience_path):
+            with open(experience_path, "r", encoding="utf-8") as f:
+                system_prompt += f"\n\n{f.read()}\n"
+        else:
+            log("Warning: experience_bank.txt not found, skipping.")
 
     # ORDER MATTERS — resume body first (bulk data, lower attention zone),
     # job description near the end (high recency attention),

@@ -741,6 +741,7 @@ async function generate() {
   const location   = $('location-select').value;
   const useConstraints = $('use-constraints').checked;
   const useProjects    = $('use-projects').checked;
+  const useExperience  = $('use-experience').checked;
 
   if (!company)    return alert('Please enter a company / output title.');
   if (!jd)         return alert('Please enter or paste a job description.');
@@ -754,6 +755,7 @@ async function generate() {
   fd.append('location',        location);
   fd.append('use_constraints', useConstraints);
   fd.append('use_projects',    useProjects);
+  fd.append('use_experience',  useExperience);
 
   let jobId;
   try {

@@ -148,6 +148,7 @@ async def generate(
     company_name: str = Form(...),
     use_constraints: bool = Form(False),
     use_projects: bool = Form(False),
+    use_experience: bool = Form(False),
     resume_name: Optional[str] = Form(None),
     resume_file: Optional[UploadFile] = File(None),
     method: str = Form("gemini"),
@@ -194,6 +195,7 @@ async def generate(
         "company_name": company_name,
         "use_constraints": use_constraints,
         "use_projects": use_projects,
+        "use_experience": use_experience,
         "method": method,
         "location": location,
     })
@@ -201,7 +203,7 @@ async def generate(
     return GenerateResponse(job_id=job_id)
 
 
-def _run_generation(job_id, master_resume_tex, job_description, company_name, use_constraints, use_projects, method="gemini", location="Rochester, NY, USA"):
+def _run_generation(job_id, master_resume_tex, job_description, company_name, use_constraints, use_projects, use_experience=False, method="gemini", location="Rochester, NY, USA"):
     """Called by the per-method worker thread — runs exactly one job at a time per method."""
     jobs[job_id]["status"] = "running"
 
@@ -219,6 +221,7 @@ def _run_generation(job_id, master_resume_tex, job_description, company_name, us
             job_description=job_description,
             use_constraints=use_constraints,
             use_projects=use_projects,
+            use_experience=use_experience,
             log=log,
         )
 

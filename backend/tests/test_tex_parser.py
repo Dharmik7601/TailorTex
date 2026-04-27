@@ -8,7 +8,7 @@ import pytest
 # Add backend to path so we can import core.tex_parser
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.tex_parser import parse_resume_tex, clean_latex
+from core.tex_parser import parse_resume_tex, clean_latex, format_resume_for_eval
 
 
 # ── Load master_resume.tex once for all tests ────────────────────────────────
@@ -187,3 +187,69 @@ def test_no_projects_section():
     result = parse_resume_tex(tex)
     assert len(result["experience"]) == 1
     assert result["projects"] == []
+
+
+# ── clean_latex unit tests ────────────────────────────────────────────────────
+
+def test_clean_latex_removes_textbf():
+    assert clean_latex(r"\textbf{Python}") == "Python"
+
+
+def test_clean_latex_removes_footnotesize():
+    assert clean_latex(r"\footnotesize{Go, Python}") == "Go, Python"
+
+
+def test_clean_latex_removes_textit():
+    assert clean_latex(r"\textit{italic text}") == "italic text"
+
+
+def test_clean_latex_removes_underline():
+    assert clean_latex(r"\underline{underlined}") == "underlined"
+
+
+def test_clean_latex_unescapes_ampersand():
+    assert "&" in clean_latex(r"Rust \& Go")
+
+
+def test_clean_latex_unescapes_percent():
+    assert "%" in clean_latex(r"50\% improvement")
+
+
+def test_clean_latex_replaces_textbar():
+    result = clean_latex(r"Python \textbar{} Go")
+    assert "|" in result
+    assert r"\textbar" not in result
+
+
+def test_clean_latex_handles_nested_commands():
+    result = clean_latex(r"\textbf{\textit{word}}")
+    assert result == "word"
+
+
+def test_clean_latex_removes_href():
+    result = clean_latex(r"\href{https://example.com}{My Link}")
+    assert result == "My Link"
+    assert "https://example.com" not in result
+
+
+# ── format_resume_for_eval tests ──────────────────────────────────────────────
+
+def test_format_eval_has_experience_section_header():
+    result = format_resume_for_eval(MASTER_TEX)
+    assert "=== EXPERIENCE ===" in result
+
+
+def test_format_eval_has_projects_section_header():
+    result = format_resume_for_eval(MASTER_TEX)
+    assert "=== PROJECTS ===" in result
+
+
+def test_format_eval_no_latex_commands_in_output():
+    result = format_resume_for_eval(MASTER_TEX)
+    assert r"\textbf" not in result
+    assert r"\resumeItem" not in result
+    assert r"\footnotesize" not in result
+
+
+def test_format_eval_empty_input_returns_empty_string():
+    assert format_resume_for_eval("") == ""

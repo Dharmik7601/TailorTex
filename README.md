@@ -1,83 +1,89 @@
 # TailorTex
 
-Rewrites your LaTeX resume to match a job description — compiles to PDF via `pdflatex`.
+Rewrites your LaTeX resume to match a job description and compiles it to PDF via `pdflatex`.
 
-![Extension screenshot](docs/assets/Extension_Screenshot.png)
+![Extension screenshot](assets/Extension_Screenshot.png)
 
-## Features
+## What it does
 
-- Rewrites bullet points and project descriptions to align with the job description
-- Only touches whitelisted sections — never breaks LaTeX structure, company names, or job titles
-- One-page output guaranteed
-- Compiles `.tex` → `.pdf` automatically and opens it
-- Multi-job queue with parallel Gemini + Claude runs
-- Location selector — choose the city/state shown in the resume header per job submission; extensible via a single list in the backend
-- Output browser — browse all saved resumes on disk with Open PDF, View Details, Recompile, and Delete actions
-- Two modes: Chrome extension (recommended) or CLI
+- Rewrites bullet points and project descriptions to match the job description
+- Only edits whitelisted sections — never touches company names, job titles, or LaTeX structure
+- Guarantees one-page output
+- Compiles `.tex` → `.pdf` automatically and opens the result
+- Runs multiple jobs in parallel (Gemini + Claude in separate queues)
 
 ## Requirements
 
-- Python 3.x — `pip install -r requirements.txt`
+- Python 3.x
 - `pdflatex` on PATH — [MiKTeX](https://miktex.org/) (Windows) or TeX Live (Mac/Linux)
 - `.env` file in the project root:
-  ```env
-  GEMINI_API_KEY=your_api_key_here
-  BACKUP_LOCATION=C:\Path\To\Your\Backup\Folder
+  ```
+  GEMINI_API_KEY=your_key_here
+  BACKUP_LOCATION=C:\Path\To\Backup
   ```
 
----
+## Setup
 
-## Extension + Backend Setup
-
-### 1. Start the backend
+**Install dependencies**
 
 ```bash
-cd backend
-uvicorn api.server:app --port 8001 --reload
+pip install -r requirements.txt
 ```
 
-### 2. Load the extension
+**Add your resume**
+
+Copy `examples/resumes/master_resume.tex` to `resumes/` and edit it to be yours.
+
+**Add your prompts** (optional but recommended)
+
+Copy the files from `examples/prompts/` to `prompts/` and edit them:
+
+| File | What to put in it |
+|------|------------------|
+| `system_prompt.txt` | Core AI rules — update if you change your resume's section structure |
+| `user_constraints.txt` | Hard rules per run, e.g. "never change the AWS job title" |
+| `additional_projects.txt` | Extra projects the AI can swap in if they fit the JD better |
+
+## Usage — Chrome Extension (recommended)
+
+**Start the backend**
+
+```bash
+make serve-api
+```
+
+**Load the extension**
 
 1. Go to `chrome://extensions`
 2. Enable **Developer mode**
-3. **Load unpacked** → select `frontend/extension/`
+3. Click **Load unpacked** → select `frontend/extension/`
 4. Click the extension icon — it opens as a side panel
 
-The extension submits jobs to the backend, streams logs in real time, and opens the PDF when done. Up to 5 jobs can be queued at once.
+Paste a job description, pick a resume and location, choose Gemini or Claude, and click Generate. Logs stream in real time; the PDF opens automatically when done.
 
-### Generation methods
+## Usage — CLI
 
-| Method | What it uses |
-|--------|-------------|
-| `gemini` | Gemini API (requires `GEMINI_API_KEY`) |
-| `claudecli` | Local Claude Code CLI (`claude` must be on PATH) |
+```bash
+# Gemini
+make run NAME=TargetCompany
 
----
+# Claude Code CLI
+make claude NAME=TargetCompany
+```
 
-## CLI Setup
+Both read from `job_description.txt` and write `output/TargetCompany_Resume.tex` / `.pdf`.
 
-For local/CLI usage without the extension, see [`local/README.md`](local/README.md).
+## Other commands
 
----
+```bash
+make dev        # backend + React UI together
+make backup     # copy output/ to BACKUP_LOCATION with date-stamped filenames
+make test       # run the backend test suite
+```
 
-## Resumes (`resumes/`)
+## Generation methods
 
-Put your `.tex` resume files here. Any filename works — the extension lists all `.tex` files in this directory as selectable options.
-
-Example: `resumes/master_resume.tex`
-
-The `examples/resumes/` directory has a sample template to start from.
-
----
-
-## Prompts (`prompts/`)
-
-Three files, all optional but expected:
-
-| File | Purpose |
-|------|---------|
-| `system_prompt.txt` | Core AI rules — defines which LaTeX sections can be edited. Update this if you change your resume's structure. |
-| `user_constraints.txt` | Per-run hard rules (e.g., "don't change X job title"). Leave empty to skip. |
-| `additional_projects.txt` | A bank of extra projects the AI can swap in if they fit the JD better. Leave empty to skip. |
-
-The `examples/prompts/` directory has working examples of each.
+| Method | Requires |
+|--------|---------|
+| `gemini` | `GEMINI_API_KEY` in `.env` |
+| `claudecli` | Claude Code CLI (`claude` on PATH) |
